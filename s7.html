@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cloud Code Saver</title>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import {
+      getFirestore, doc, setDoc, getDoc, updateDoc, collection, getDocs
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyB3zpYZHLRCQCbRyuqS4eeI2BOJo4h3YzY",
+      authDomain: "not-known-d5661.firebaseapp.com",
+      projectId: "not-known-d5661",
+      storageBucket: "not-known-d5661.appspot.com",
+      messagingSenderId: "232461689268",
+      appId: "1:232461689268:web:78a732976e814ffd9092e1",
+      measurementId: "G-FZV460Z32F"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    let docName = localStorage.getItem('fDevDoc');
+
+    async function loadSavedCodes() {
+      if (!docName) return;
+      const docRef = doc(db, "fDevlopers", docName);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) return;
+
+      const data = docSnap.data();
+      const outputDiv = document.getElementById("codeOutput");
+      outputDiv.innerHTML = '';
+      let index = 1;
+
+      while (data[`code${index}`]) {
+        const name = data[`code${index}`];
+        const lang = data[`codeLang${index}`];
+        const code = data[`codeContent${index}`];
+
+        const section = document.createElement("div");
+        section.innerHTML = `
+          <h3>Code ${index}: ${name} (${lang})</h3>
+          <button class="copy-btn" data-code="${encodeURIComponent(code)}">Copy</button>
+          <pre class="code-box"></pre>
+        `;
+        section.querySelector("pre").textContent = code;
+        outputDiv.appendChild(section);
+        index++;
+      }
+    }
+
+    document.addEventListener("click", function (e) {
+      if (e.target.classList.contains("copy-btn")) {
+        const code = decodeURIComponent(e.target.getAttribute("data-code"));
+        navigator.clipboard.writeText(code).then(() => {
+          e.target.textContent = "Copied!";
+          setTimeout(() => e.target.textContent = "Copy", 2000);
+        });
+      }
+    });
+
+    window.saveCodeToCloud = async function () {
+      const name = document.getElementById("projectName").value.trim();
+      const lang = document.getElementById("projectLang").value.trim();
+      const code = document.getElementById("projectCode").value;
+      if (!name || !lang || !code) return alert("All fields are required!");
+
+      const docRef = doc(db, "fDevlopers", docName);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) return;
+
+      const data = docSnap.data();
+      let index = 1;
+      while (data[`code${index}`]) index++;
+
+      const newData = {};
+      newData[`code${index}`] = name;
+      newData[`codeLang${index}`] = lang;
+      newData[`codeContent${index}`] = code;
+
+      await updateDoc(docRef, newData);
+      window.location.reload();
+    }
+
+    async function checkIfNameExists(name) {
+      const snapshot = await getDocs(collection(db, "fDevlopers"));
+      return snapshot.docs.some(docu => docu.id === name);
+    }
+
+    window.createUserDoc = async function () {
+      const nameInput = document.getElementById("devName").value.trim();
+      if (!nameInput) return alert("Please enter your name");
+
+      const exists = await checkIfNameExists(nameInput);
+      if (exists) return alert("This name is already taken. Choose a different one.");
+
+      docName = nameInput;
+      localStorage.setItem('fDevDoc', docName);
+      await setDoc(doc(db, "fDevlopers", docName), { name: nameInput });
+      document.getElementById("nameModal").style.display = 'none';     
+      loadSavedCodes();
+      document.querySelector("#Name").innerText = `${localStorage.getItem('fDevDoc')}\n Cloud Storage`;
+    }
+
+    window.findUserDoc = async function () {
+      const name = document.getElementById("findStorage").value.trim();
+      if (!name) return;
+      const docRef = doc(db, "fDevlopers", name);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) return alert("No such storage found!");
+      docName = name;
+      localStorage.setItem('fDevDoc', docName);
+      document.getElementById("nameModal").style.display = 'none';           
+      loadSavedCodes();
+      document.querySelector("#Name").innerText = `${localStorage.getItem('fDevDoc')}\n Cloud Storage`;
+    }
+
+    window.toggleFindCloud = function () {
+      document.getElementById("modalView1").style.display = 'none';
+      document.getElementById("modalView2").style.display = 'block';
+    }
+    window.toggle2create = function () {
+      document.getElementById("modalView1").style.display = 'block';
+      document.getElementById("modalView2").style.display = 'None';
+    }
+    window.onload = function () {
+  if (!docName) {
+    document.getElementById("nameModal").style.display = 'flex';
+    document.querySelector("#Name").innerText = `Cloud Storage`;
+  } else {    
+    loadSavedCodes();
+    document.querySelector("#Name").innerText = `${localStorage.getItem('fDevDoc')}\n Cloud Storage`;
+  }
+}
+  </script>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #ffffff;
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+      padding: 20px;
+      color: #007BFF;
+    }
+    h3 {
+      color: #007BFF;
+      margin-left: 10px;
+    }
+    .code-box {
+      background: #f0faff;
+      border: 1px solid #007BFF;
+      padding: 10px;
+      margin: 10px;
+      font-size: 0.85em;
+      white-space: pre;
+      overflow-x: auto;
+      overflow-y: auto;
+      max-height: 200px;
+    }
+    .code-btn {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      padding: 12px 25px;
+      font-size: 1em;
+      border-radius: 5px;
+      cursor: pointer;
+      z-index: 999;
+    }
+    .copy-btn {
+      margin-left: 10px;
+      margin-bottom: 10px;
+      padding: 5px 10px;
+      font-size: 0.8em;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      width: 80%;
+      max-width: 600px;      
+      box-shadow: 0 0 10px #aaa;
+    }
+    .modal-content h2 {
+      color: #007BFF;      
+      text-align: center;
+    }
+    .modal-content input, .modal-content textarea {
+      width: 92%;
+      margin: 10px 0;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    .modal-content button {
+      background-color: #007BFF;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 5px;
+      text-align: center;
+    }
+    @media (max-width: 600px) {
+      .modal-content textarea {
+        height: 150px;
+      }
+    }   
+  </style>
+</head>
+<body>
+  <h1 id="Name">Cloud storage</h1>
+  <div id="codeOutput"></div>
+
+  <button class="code-btn" onclick="document.getElementById('codeModal').style.display='flex'">
+    Save Your Code on Cloud
+  </button>
+
+  <div id="codeModal" class="modal">
+    <div class="modal-content">
+      <h2>Paste your code here</h2>
+      <input type="text" id="projectName" placeholder="Name this project" />
+      <input type="text" id="projectLang" placeholder="Code language" />
+      <textarea id="projectCode" rows="10" placeholder="Paste your code..."></textarea>
+      <button onclick="saveCodeToCloud()">Save</button>
+    </div>
+  </div>
+
+  <div id="nameModal" class="modal">
+    <div class="modal-content">
+      <div id="modalView1">
+       <center>
+        <h2>Create your Cloud Storage</h2>
+        <input type="text" id="devName" placeholder="Enter your name to create storage" />
+        <button onclick="createUserDoc()">Create</button><br><p>Or</p>
+        <button onclick="toggleFindCloud()">Go to my cloud storage</button>
+       </center>
+      </div>
+      <div id="modalView2" style="display:None;">
+       <center>           
+        <h2>Find your Cloud Storage</h2>
+        <input type="text" id="findStorage" placeholder="Enter the name of your storage" />
+        <button onclick="findUserDoc()">Check</button><br><p>Or</p>
+        <button onclick="toggle2create()">Create a new cloud storage</button>
+       </center>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.onclick = function(e) {
+      if (e.target.classList.contains("modal")) e.target.style.display = 'none';
+    }
+  </script>
+</body>
+</html>
