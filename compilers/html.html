@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Floating UI on iFrame</title>
+  <style>
+    :root { --scale: 1; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      overflow: hidden;
+      background: #000;
+    }
+
+    .scale-container {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      position: relative;
+      touch-action: manipulation;
+      transition: filter 0.3s ease;
+    }
+
+    .iframe-wrapper {
+      width: 375px;
+      height: calc(100vh / var(--scale));
+      transform-origin: top left;
+      transform: scale(var(--scale));
+      position: absolute;
+      top: -50px;
+      left: 0;
+      z-index: 1;
+    }
+
+    .iframe-wrapper iframe {
+      width: 375px;
+      height: calc(100vh / var(--scale));
+      border: none;
+      display: block;
+      box-shadow: 0 0 20px #6B38FF;
+    }
+
+    .floating-ui {
+      position: absolute;
+      top: 5px;
+      left: 5px;
+      z-index: 2;
+      min-width: 80px;
+      min-height: 80px;
+      background: rgba(0, 0, 0, 0.7);
+      background-color: grey;
+      color: #fff;
+      padding: 10px 5px;
+      border-radius: 8px;
+      font-family: sans-serif;
+      font-size: 14px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .temp {
+      position: absolute;
+      top: 100px;
+      right: 10px;
+      z-index: 2;
+      background: rgba(0, 0, 0, 0.7);
+      background-color: #eeeeee;
+      color: #eeeeee;
+      padding: 10px 5px;
+      border-radius: 8px;
+      font-family: sans-serif;
+      font-size: 14px;
+    }
+
+    .block-desktop {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: black;
+      color: red;
+      font-size: 1.5rem;
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 30px;
+    }
+  .back-popup {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 90%;
+    height: auto;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    color: #d32f2f;
+    padding: 2rem 1.5rem 1.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 1rem;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    z-index: 9998;
+    text-align: center;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    backdrop-filter: blur(10px);
+    animation: popFadeIn 0.3s ease-out;
+  }
+
+  .close-btn {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    font-size: 20px;
+    background: none;
+    border: 2px solid Balck;
+    border-radius:50%;
+    color: #d32f2f;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+
+  .close-btn:hover {
+    transform: scale(1.2);
+  }
+
+  @keyframes popFadeIn {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -60%);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, -50%);
+    }
+  }
+
+  .blurred {
+    filter: blur(6px);
+    pointer-events: none;
+    user-select: none;
+  }
+    .short {
+        color: white;
+        background-color:#007bff;
+        height:3rem;
+        display:flex;
+        justify-content: center;
+        align-items:center;
+    }
+    #pop {
+        margin:10px;
+        height:30px;
+        width:50px;
+    }
+  </style>
+</head>
+<body>
+    <div class="short">
+        <center>
+        Save your code on cloud 
+        <button id="pop">Save</button>
+        </center>
+    </div>
+  <div class="scale-container" id="scaleContainer">
+    <div class="iframe-wrapper">
+      <iframe src="https://onecompiler.com/html" scrolling="no" allowfullscreen></iframe>
+    </div>
+    <div class="floating-ui">Take a Break.</div>
+    <div class="temp">----------</div>
+  </div>
+
+  <div class="block-desktop" id="desktopBlock">
+    <div>
+      ❌ This website is only viewable in mobile mode.<br>Please disable "Desktop site" in your browser.
+    </div>
+  </div>
+<div class="back-popup" id="backPopup">
+  <button class="close-btn" id="closeBackPopup">×</button>
+  <br>Save your code before leaving this page.<br>
+  otherwise you will lose your code.
+</div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyB3zpYZHLRCQCbRyuqS4eeI2BOJo4h3YzY",
+      authDomain: "not-known-d5661.firebaseapp.com",
+      projectId: "not-known-d5661",
+      storageBucket: "not-known-d5661.appspot.com",
+      messagingSenderId: "232461689268",
+      appId: "1:232461689268:web:78a732976e814ffd9092e1",
+      measurementId: "G-FZV460Z32F"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const storedDocName = localStorage.getItem("fDevDoc");
+
+    if (storedDocName) {
+      const compDocName = `com_${storedDocName}`;
+      const today = new Date();
+      const dateKey = `TD-html_${today.getDate()}-${today.getMonth() + 1}-${today.getFullYear()}`;
+
+      let totalSeconds = 0;
+      let existingSeconds = 0;
+
+      const compRef = doc(db, "fDevlopers", compDocName);
+
+      getDoc(compRef).then(docSnap => {
+        if (docSnap.exists() && docSnap.data()[dateKey]) {
+          const existing = docSnap.data()[dateKey].split(":" ).map(Number);
+          existingSeconds = existing[0] * 3600 + existing[1] * 60 + existing[2];
+        }
+
+        setInterval(async () => {
+          totalSeconds++;
+          const total = totalSeconds + existingSeconds;
+          const hrs = String(Math.floor(total / 3600)).padStart(2, '0');
+          const mins = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
+          const secs = String(total % 60).padStart(2, '0');
+          const update = {
+            docName: storedDocName,
+            [dateKey]: `${hrs}:${mins}:${secs}`
+          };
+          await setDoc(compRef, update, { merge: true });
+        }, 1000);
+      });
+    }
+
+    const scale = window.innerWidth / 375;
+    document.documentElement.style.setProperty('--scale', scale);
+    window.addEventListener('resize', () => {
+      const newScale = window.innerWidth / 375;
+      document.documentElement.style.setProperty('--scale', newScale);
+      checkDesktopMode();
+    });
+
+    function checkDesktopMode() {
+      const blocker = document.getElementById("desktopBlock");
+      if (window.innerWidth > 600) {
+        blocker.style.display = "flex";
+        document.body.style.overflow = "hidden";
+      } else {
+        blocker.style.display = "none";
+        document.body.style.overflow = "auto";
+      }
+    }
+    checkDesktopMode();
+
+    document.querySelector(".floating-ui").addEventListener('click', () => {
+      window.open("https://online-gaming-arena.netlify.app/");
+    });
+    
+    // BACK BUTTON LOGIC WITHOUT TIMER
+let backPopupOpen = false;
+
+  window.addEventListener("popstate", () => {
+    const popup = document.getElementById("backPopup");
+    const mainUI = document.getElementById("scaleContainer");
+
+    if (backPopupOpen) {
+      history.go(-2);
+    } else {
+      popup.style.display = "block";
+      mainUI.classList.add("blurred");
+      backPopupOpen = true;
+      history.pushState(null, null, location.href);
+    }
+  });
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const closeBtn = document.getElementById("closeBackPopup");
+    closeBtn.addEventListener("click", () => {
+      document.getElementById("backPopup").style.display = "none";
+      const mainUI = document.getElementById("scaleContainer");
+      if (mainUI) {
+        mainUI.classList.remove("blurred");
+      }
+      backPopupOpen = false;
+    });
+  });
+
+  history.pushState(null, null, location.href);
+  
+let pop = document.querySelector("#pop");
+    pop.addEventListener('click', () =>{
+        window.open("../s7.html");
+    });
+  </script>
+</body>
+</html>
