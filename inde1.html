@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clear Local Storage</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #f8f9fa;
+    }
+    button {
+      padding: 10px 20px;
+      background-color: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #c82333;
+    }
+  </style>
+</head>
+<body>
+  <button onclick="clearLocalStorage()">Clear Local Storage</button>
+  <button onclick="showLocalStorage()">Show Local Storage</button>
+<pre id="output"></pre>
+<input type="text" id="keyInput" placeholder="Enter key to fetch" />
+<button onclick="getLocalValue()">Get Value</button>
+<p id="valueDisplay"></p>
+
+
+
+  <script>
+    function clearLocalStorage() {
+      localStorage.clear();
+      alert("Local storage has been cleared.");
+    }
+  function clearLocalStorage() {
+    localStorage.clear();
+    alert("Local storage has been cleared.");
+    document.getElementById('output').textContent = ''; // Clear output too
+  }
+
+  function showLocalStorage() {
+    const output = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      output[key] = localStorage.getItem(key);
+    }
+    document.getElementById('output').textContent = JSON.stringify(output, null, 2);
+  }
+  function getLocalValue() {
+  const key = document.getElementById('keyInput').value;
+  const value = localStorage.getItem(key);
+  document.getElementById('valueDisplay').textContent =
+    value !== null ? `Value: ${value}` : 'Key not found in local storage.';
+}
+
+  </script>
+</body>
+</html>
