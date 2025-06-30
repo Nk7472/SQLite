@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cloud Code Saver</title>
+  <title>Cloud storage</title>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import {
@@ -102,7 +102,7 @@
       await setDoc(doc(db, "fDevlopers", docName), { name: nameInput });
       document.getElementById("nameModal").style.display = 'none';     
       loadSavedCodes();
-      document.querySelector("#Name").innerText = `${localStorage.getItem('fDevDoc')}\n Cloud Storage`;
+      document.querySelector("#Name").innerText = `Cloud storage of\n${localStorage.getItem('fDevDoc')}`;
     }
 
     window.findUserDoc = async function () {
@@ -115,7 +115,7 @@
       localStorage.setItem('fDevDoc', docName);
       document.getElementById("nameModal").style.display = 'none';           
       loadSavedCodes();
-      document.querySelector("#Name").innerText = `${localStorage.getItem('fDevDoc')}\n Cloud Storage`;
+      document.querySelector("#Name").innerText = `Cloud storage of\n${localStorage.getItem('fDevDoc')}`;
     }
 
     window.toggleFindCloud = function () {
@@ -132,7 +132,7 @@
     document.querySelector("#Name").innerText = `Cloud Storage`;
   } else {    
     loadSavedCodes();
-    document.querySelector("#Name").innerText = `${localStorage.getItem('fDevDoc')}\n Cloud Storage`;
+    document.querySelector("#Name").innerText = `Cloud storage of\n${localStorage.getItem('fDevDoc')}`;
   }
 }
   </script>
@@ -236,7 +236,10 @@
   </style>
 </head>
 <body>
-  <h1 id="Name">Cloud storage</h1>
+  <h1>fDevelopers.netlify.app</h1>
+  <center>
+  <h3 id="Name">Cloud storage</h3>
+  </center>
   <div id="codeOutput"></div>
 
   <button class="code-btn" onclick="document.getElementById('codeModal').style.display='flex'">
