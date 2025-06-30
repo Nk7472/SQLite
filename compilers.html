@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Game Hub with Report</title>
+  <style>
+    :root {
+      --primary: #007BFF;
+      --bg-light: #f8faff;
+      --red-light: #ff6b6b;
+      --red-dark: #c0392b;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: #ffffff;
+      color: var(--primary);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-bottom: 80px;
+    }
+    h1 {
+      margin: 20px 10px;
+      text-align: center;
+      font-size:27px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      width: 90%;
+      max-width: 1000px;
+    }
+    .game-card {
+      background: var(--bg-light);
+      border-radius: 15px;
+      padding: 50px 15px;
+      font-size: 1.8rem;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(0, 123, 255, 0.15);
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .game-card:hover {
+      background: #e4f1ff;
+      transform: scale(1.03);
+    }
+    .report-button {
+      position: fixed;
+      width:60px;
+      height:60px;
+      bottom: 40px;
+      left: 25px;
+      background-color: #222;
+      color: var(--red-light);
+      border-radius: 10%;
+      font-size: 2.2rem;
+      font-weight: bold;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      z-index: 1000;
+      transition: transform 0.2s ease;
+    }
+    .report-button:hover {
+      transform: scale(1.1);
+    }
+    .report-button span {
+      
+      font-size: 0.65rem;
+      color: var(--red-light);
+    }
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.75);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 20px;
+    }
+    .modal-content {
+      width: 100%;
+      max-width: 450px;
+      background: #111;
+      border-radius: 10px;
+      padding: 25px;
+      color: var(--red-light);
+      text-align: center;
+      border: 2px solid var(--red-light);
+      box-shadow: 0 0 25px rgba(255, 107, 107, 0.3);
+    }
+    .modal-content input,
+    .modal-content textarea {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border-radius: 5px;
+      border: 1px solid var(--red-light);
+      background-color: #222;
+      color: white;
+      font-size: 1rem;
+    }
+    .modal-content button {
+      width: 100%;
+      padding: 12px;
+      background: var(--red-light);
+      border: none;
+      color: white;
+      border-radius: 5px;
+      margin-top: 10px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    .modal-content button:hover {
+      background: var(--red-dark);
+    }
+    .thank-you {
+      display: none;
+      text-align: center;
+      color: var(--primary);
+    }
+    @media (max-width: 600px) {
+      .game-card { font-size: 1.3rem; padding: 30px 10px; }
+      .report-button { width: 3.2rem; height: 3.2rem; font-size: 1.8rem; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Devloper-tools.netlify.com</h1>
+  <div class="grid">
+    <div id="SQLite" class="game-card" >SQLite</div>
+    <div id="MySQL" class="game-card" >MySQL</div>
+    <div id="PLSQL" class="game-card" >Pl/SQL</div>
+    <div id="python" class="game-card" >Python</div>
+    <div id="cpp" class="game-card" >C++</div>
+    <div id="html" class="game-card" >Html</div>
+    <div id="javascript" class="game-card" >Javascript</div>
+    <div id="c" class="game-card" >C</div>
+    <div id="java" class="game-card" >Java</div>
+  </div>
+
+  <div class="report-button" onclick="openReport()">
+    !<span>Report</span>
+  </div>
+
+  <div class="modal-overlay" id="reportModal">
+    <div class="modal-content" id="reportContent">
+      <h2>Report an Issue</h2>
+      <input type="text" id="reportName" placeholder="Enter your name" />
+      <textarea id="reportText" rows="6" placeholder="Describe the issue or feedback..."></textarea>
+      <button onclick="submitReport()">Submit Report</button>
+    </div>
+    <div class="modal-content thank-you" id="thankYou">
+      <h2>✅ Thank You!</h2>
+      <p>We appreciate your feedback 🙏</p>
+      <button onclick="closeReport()">Close</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyB3zpYZHLRCQCbRyuqS4eeI2BOJo4h3YzY",
+      authDomain: "not-known-d5661.firebaseapp.com",
+      projectId: "not-known-d5661",
+      storageBucket: "not-known-d5661.appspot.com",
+      messagingSenderId: "232461689268",
+      appId: "1:232461689268:web:78a732976e814ffd9092e1",
+      measurementId: "G-FZV460Z32F"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    window.openReport = function () {
+      document.getElementById('reportModal').style.display = 'flex';
+      document.getElementById('reportContent').style.display = 'block';
+      document.getElementById('thankYou').style.display = 'none';
+    }
+
+    window.submitReport = async function () {
+      const name = document.getElementById('reportName').value.trim();
+      const text = document.getElementById('reportText').value.trim();
+      if (!name || !text) return alert("Please fill out all fields");
+
+      const docId = `Report_${name}_${Date.now()}`;
+      const dateTime = new Date().toLocaleString();
+
+      await setDoc(doc(db, "fDevlopers", docId), {
+        Name: name,
+        Report: text,
+        "Date-time": dateTime
+      });
+
+      document.getElementById('reportContent').style.display = 'none';
+      document.getElementById('thankYou').style.display = 'block';
+    }
+
+    window.closeReport = function () {
+      document.getElementById('reportModal').style.display = 'none';
+    }
+    let SQLite = document.querySelector("#SQLite");
+    let MySQL = document.querySelector("#MySQL");
+    let PLSQL = document.querySelector("#PLSQL");
+    let cpp = document.querySelector("#cpp");
+    let python = document.querySelector("#python");
+    let html = document.querySelector("#html");
+    let javascript = document.querySelector("#javascript");
+    let c = document.querySelector("#c");
+    let java = document.querySelector("#java");
+    
+    SQLite.addEventListener('click', () => {
+        window.location.href = "compilers/SQLite.html";
+    })
+    
+    MySQL.addEventListener('click', () => {
+        window.location.href = "compilers/MySQL.html";
+    })
+    
+    PLSQL.addEventListener('click', () => {
+        window.location.href = "compilers/PLSQL.html";
+    })
+    
+    cpp.addEventListener('click', () => {
+        window.location.href = "compilers/cpp.html";
+    })
+    python.addEventListener('click', () => {
+        window.location.href = "compilers/python.html";
+    })
+    html.addEventListener('click', () => {
+        window.location.href = "compilers/html.html";
+    })
+    javascript.addEventListener('click', () => {
+        window.location.href = "compilers/javascript.html";
+    })
+    c.addEventListener('click', () => {
+        window.location.href = "compilers/c.html";
+    })
+    java.addEventListener('click', () => {
+        window.location.href = "compilers/compTest/t1.html";
+    })
+  </script>
+</body>
+</html>
