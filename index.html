@@ -135,6 +135,20 @@
       .game-card { font-size: 1.3rem; padding: 30px 10px; }
       .report-button { width: 3.2rem; height: 3.2rem; font-size: 1.8rem; }
     }
+    a.download-btn {
+      padding: 15px 30px;
+      font-size: 1rem;
+      color: white;
+      background-color: #007BFF;
+      text-decoration: none;
+      border-radius: 8px;
+      box-shadow: 0 5px 15px rgba(0, 123, 255, 0.3);
+      transition: background 0.3s ease;
+    }
+
+    a.download-btn:hover {
+      background-color: #0056b3;
+    }
   </style>
 </head>
 <body>
@@ -142,6 +156,7 @@
   <div class="grid">
     <div id="storage" class="game-card" >My Cloud Storage</div>
     <div id="comp" class="game-card" >Compilers</div>
+    <div id="comp" class="game-card" ><a href="https://symphonious-muffin-fc336e.netlify.app/fDevelopers-z6.apk" download class="download-btn">Download app</a></div>
   </div>
 
   <div class="report-button" onclick="openReport()">
