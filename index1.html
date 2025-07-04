@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quick Web Host</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 2rem; }
+    input, button { margin-top: 1rem; padding: 0.5rem; }
+    iframe { margin-top: 2rem; width: 100%; height: 80vh; border: 1px solid #ccc; }
+  </style>
+</head>
+<body>
+  <h1>Upload and Preview Your Website</h1>
+  <input type="file" id="fileInput" webkitdirectory directory multiple />
+  <br />
+  <button onclick="handleUpload()">Host My Website</button>
+  <div id="linkDisplay" style="margin-top: 1rem;"></div>
+  <iframe id="previewFrame" style="display:none;"></iframe>
+
+  <script>
+    let uploadedFiles = {};
+
+    function handleUpload() {
+      const input = document.getElementById('fileInput');
+      const files = input.files;
+      if (!files.length) return alert("Please select a folder or files.");
+
+      // Store files in memory
+      for (let file of files) {
+        uploadedFiles[file.webkitRelativePath || file.name] = file;
+      }
+
+      const indexFile = Object.values(uploadedFiles).find(f => f.name === "index.html");
+      if (!indexFile) return alert("Please make sure your folder contains an index.html file.");
+
+      const reader = new FileReader();
+      reader.onload = e => {
+        const blob = new Blob([e.target.result], { type: "text/html" });
+        const url = URL.createObjectURL(blob);
+
+        document.getElementById("previewFrame").src = url;
+        document.getElementById("previewFrame").style.display = 'block';
+        document.getElementById("linkDisplay").innerHTML = `Your site is previewing below. Temporary link: <a href="${url}" target="_blank">Open in new tab</a>`;
+      };
+      reader.readAsText(indexFile);
+    }
+  </script>
+</body>
+</html>
