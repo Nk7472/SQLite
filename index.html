@@ -43,21 +43,29 @@
       fd.append('site', blob, 'site.zip');
 
       try {
-        const res = await fetch('/.netlify/functions/deploy', {
-          method: 'POST',
-          body: fd
-        });
-        const json = await res.json();
-        if (res.ok && json.url) {
-          status.textContent = 'Success!';
-          live.innerHTML = `Live URL: <a href="${json.url}" target="_blank">${json.url}</a>`;
-        } else {
-          status.textContent = 'Failed: ' + (json.error||res.statusText);
-        }
-      } catch (e) {
-        status.textContent = 'Error: ' + e.message;
-      }
-    }
+  const res = await fetch('/.netlify/functions/deploy', {
+    method: 'POST',
+    body: formData
+  });
+
+  const text = await res.text();       // read raw body
+  let data;
+  try {
+    data = JSON.parse(text);           // try to parse JSON
+  } catch (parseErr) {
+    throw new Error(`Invalid JSON response: ${text}`);
+  }
+
+  if (res.ok && data.url) {
+    status.textContent = 'Success!';
+    liveLink.innerHTML = `Live URL: <a href="${data.url}" target="_blank">${data.url}</a>`;
+  } else {
+    throw new Error(data.error || data.message || text || res.statusText);
+  }
+} catch (err) {
+  status.textContent = 'Error: ' + err.message;
+  console.error('Deploy error:', err);
+}
   </script>
 </body>
 </html>
