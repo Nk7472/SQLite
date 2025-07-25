@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Web Hosting Platform</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; margin-top: 50px; }
+    input[type="file"] { margin: 20px; }
+    button { padding: 10px 20px; }
+    #output { margin-top: 20px; font-weight: bold; color: green; }
+  </style>
+</head>
+<body>
+  <h1>Upload Project Folder</h1>
+  <input type="file" id="folderInput" webkitdirectory directory multiple />
+  <br>
+  <button onclick="uploadFolder()">Deploy</button>
+  <div id="output"></div>
+
+  <script>
+    async function uploadFolder() {
+      const input = document.getElementById("folderInput");
+      const files = input.files;
+      if (!files.length) return alert("Please select a folder");
+
+      const formData = new FormData();
+      for (const file of files) {
+        formData.append("files", file, file.webkitRelativePath);
+      }
+
+      const res = await fetch("/.netlify/functions/deployProject", {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await res.json();
+      document.getElementById("output").innerText =
+        data.url ? `✅ Project Live: ${data.url}` : `❌ Error: ${data.error}`;
+    }
+  </script>
+</body>
+</html>
