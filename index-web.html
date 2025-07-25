@@ -1,71 +1,53 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Instant Folder Hosting</title>
+  <meta charset="UTF-8">
+  <title>Web Hosting Platform</title>
   <style>
-    body { font-family: Arial; padding: 2rem; text-align: center; }
-    label { background: #007bff; color: #fff; padding: .5rem 1rem; border-radius: 4px; cursor: pointer; }
-    #status, #live { margin-top: 1rem; font-weight: bold; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      text-align: center;
+    }
+    input, button {
+      padding: 10px;
+      margin: 10px;
+      width: 300px;
+    }
+    #output {
+      margin-top: 20px;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
-  <h1>Upload Your Website Folder</h1>
-  <label for="files">Choose Folder</label>
-  <input id="files" type="file" webkitdirectory directory multiple style="display:none" />
-  <div id="status"></div>
-  <div id="live"></div>
+  <h1>Deploy Your Project</h1>
+  <input type="text" id="siteName" placeholder="Enter custom name (e.g., my-site)" /><br>
+  <input type="file" id="folderInput" webkitdirectory directory multiple /><br>
+  <button onclick="uploadFolder()">Deploy</button>
+  <p id="output"></p>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
   <script>
-    document.querySelector('label').onclick = () =>
-      document.getElementById('files').click();
+    async function uploadFolder() {
+      const siteName = document.getElementById("siteName").value.trim();
+      const files = document.getElementById("folderInput").files;
+      if (!files.length || !siteName) return alert("Please enter a name and select a folder");
 
-    document.getElementById('files').onchange = async function() {
-      const files = Array.from(this.files);
-      const status = document.getElementById('status');
-      const live = document.getElementById('live');
-      live.textContent = '';
-      if (!files.some(f => f.name.toLowerCase() === 'index.html')) {
-        return status.textContent = 'Error: index.html missing';
+      const formData = new FormData();
+      formData.append("siteName", siteName);
+      for (const file of files) {
+        formData.append("files", file, file.webkitRelativePath);
       }
 
-      status.textContent = 'Zipping…';
-      const zip = new JSZip();
-      for (let f of files) {
-        zip.file(f.webkitRelativePath, await f.arrayBuffer());
-      }
-      const blob = await zip.generateAsync({ type: 'blob' });
+      const res = await fetch("/.netlify/functions/deployProject", {
+        method: "POST",
+        body: formData
+      });
 
-      status.textContent = 'Uploading…';
-      const fd = new FormData();
-      fd.append('site', blob, 'site.zip');
-
-      try {
-  const res = await fetch('/.netlify/functions/deploy', {
-    method: 'POST',
-    body: formData
-  });
-
-  const text = await res.text();       // read raw body
-  let data;
-  try {
-    data = JSON.parse(text);           // try to parse JSON
-  } catch (parseErr) {
-    throw new Error(`Invalid JSON response: ${text}`);
-  }
-
-  if (res.ok && data.url) {
-    status.textContent = 'Success!';
-    liveLink.innerHTML = `Live URL: <a href="${data.url}" target="_blank">${data.url}</a>`;
-  } else {
-    throw new Error(data.error || data.message || text || res.statusText);
-  }
-} catch (err) {
-  status.textContent = 'Error: ' + err.message;
-  console.error('Deploy error:', err);
-}
+      const data = await res.json();
+      document.getElementById("output").innerText = data.url ? `✅ Live at: ${data.url}` : `❌ Error: ${data.error}`;
+    }
   </script>
 </body>
 </html>
