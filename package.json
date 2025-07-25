@@ -1,9 +1,8 @@
 {
-  "name": "netlify-functions",
+  "name": "netlify-uploader",
   "version": "1.0.0",
   "dependencies": {
-    "busboy": "^1.6.0",
-    "adm-zip": "^0.5.10",
+    "adm-zip": "^0.5.9",
     "node-fetch": "^2.6.7"
   }
 }
