@@ -1,52 +1,41 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Web Hosting Platform</title>
+  <title>Web Hosting Upload</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 40px;
-      text-align: center;
-    }
-    input, button {
-      padding: 10px;
-      margin: 10px;
-      width: 300px;
-    }
-    #output {
-      margin-top: 20px;
-      font-weight: bold;
-    }
+    body { font-family: Arial; padding: 2em; }
+    input, button { margin: 0.5em 0; }
   </style>
 </head>
 <body>
-  <h1>Deploy Your Project</h1>
-  <input type="text" id="siteName" placeholder="Enter custom name (e.g., my-site)" /><br>
-  <input type="file" id="folderInput" webkitdirectory directory multiple /><br>
+  <h2>Upload Your Project Folder</h2>
+  <input type="file" id="folderInput" webkitdirectory directory multiple />
+  <input type="text" id="siteName" placeholder="Enter site name (optional)" />
   <button onclick="uploadFolder()">Deploy</button>
-  <p id="output"></p>
+  <pre id="result"></pre>
 
   <script>
     async function uploadFolder() {
-      const siteName = document.getElementById("siteName").value.trim();
-      const files = document.getElementById("folderInput").files;
-      if (!files.length || !siteName) return alert("Please enter a name and select a folder");
+      const files = document.getElementById('folderInput').files;
+      const siteName = document.getElementById('siteName').value;
+      if (!files.length) return alert("Select a folder to upload.");
 
       const formData = new FormData();
-      formData.append("siteName", siteName);
+      formData.append("siteName", siteName || "");
+
       for (const file of files) {
-        formData.append("files", file, file.webkitRelativePath);
+        // Keep full path for file
+        formData.append("folder", file, file.webkitRelativePath);
       }
 
       const res = await fetch("/.netlify/functions/deployProject", {
         method: "POST",
-        body: formData
+        body: formData,
       });
 
-      const data = await res.json();
-      document.getElementById("output").innerText = data.url ? `✅ Live at: ${data.url}` : `❌ Error: ${data.error}`;
+      const result = await res.text();
+      document.getElementById("result").textContent = result;
     }
   </script>
 </body>
