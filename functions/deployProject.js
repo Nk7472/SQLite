@@ -1,72 +1,84 @@
-// deployProject.js
-const AdmZip = require("adm-zip");
+const Busboy = require("busboy");
+const fs = require("fs");
+const path = require("path");
+const os = require("os");
+const { exec } = require("child_process");
+const archiver = require("archiver");
 const fetch = require("node-fetch");
-const { Readable } = require("stream");
 
-exports.handler = async (event) => {
-  try {
-    const boundary = event.headers["content-type"].split("boundary=")[1];
-    const busboy = require("busboy");
-    const { PassThrough } = require("stream");
-    const bb = busboy({ headers: event.headers });
+exports.handler = async (event, context) => {
+  if (event.httpMethod !== "POST") {
+    return { statusCode: 405, body: "Method Not Allowed" };
+  }
 
-    const zip = new AdmZip();
+  return new Promise((resolve, reject) => {
+    const busboy = new Busboy({
+      headers: {
+        "content-type": event.headers["content-type"] || event.headers["Content-Type"]
+      }
+    });
+
+    const uploadDir = fs.mkdtempSync(path.join(os.tmpdir(), "upload-"));
     const files = [];
     let siteName = "";
 
-    await new Promise((resolve, reject) => {
-      const stream = Readable.from(event.body, { encoding: "base64" });
-      stream.pipe(bb);
+    busboy.on("field", (fieldname, val) => {
+      if (fieldname === "siteName") siteName = val;
+    });
 
-      bb.on("file", (fieldname, file, filename) => {
-        const buffer = [];
-        file.on("data", (data) => buffer.push(data));
-        file.on("end", () => {
-          const fullPath = filename;
-          zip.addFile(fullPath, Buffer.concat(buffer));
+    busboy.on("file", (fieldname, file, filename, encoding, mimetype) => {
+      const savePath = path.join(uploadDir, filename);
+      const dir = path.dirname(savePath);
+      fs.mkdirSync(dir, { recursive: true });
+      const writeStream = fs.createWriteStream(savePath);
+      file.pipe(writeStream);
+      files.push(savePath);
+    });
+
+    busboy.on("finish", async () => {
+      try {
+        // Create a zip
+        const zipPath = path.join(os.tmpdir(), `${Date.now()}-project.zip`);
+        const output = fs.createWriteStream(zipPath);
+        const archive = archiver("zip", { zlib: { level: 9 } });
+
+        output.on("close", async () => {
+          const result = await deployToNetlify(zipPath, siteName);
+          resolve({
+            statusCode: 200,
+            body: JSON.stringify(result)
+          });
         });
-      });
 
-      bb.on("field", (name, value) => {
-        if (name === "siteName") siteName = value;
-      });
-
-      bb.on("finish", resolve);
-      bb.on("error", reject);
+        archive.on("error", err => reject({ statusCode: 500, body: err.message }));
+        archive.pipe(output);
+        archive.directory(uploadDir, false);
+        archive.finalize();
+      } catch (err) {
+        reject({ statusCode: 500, body: err.message });
+      }
     });
 
-    const zipBuffer = zip.toBuffer();
-
-    const NETLIFY_TOKEN = "nfp_nkaUFvvihs48EPfZocKuCxe5CZZkT6iGe800"; // Set in Netlify Dashboard
-    const res = await fetch(`https://api.netlify.com/api/v1/sites`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${NETLIFY_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ name: siteName }),
-    });
-
-    const siteData = await res.json();
-    if (siteData.message) throw new Error(siteData.message);
-
-    await fetch(`https://api.netlify.com/api/v1/sites/${siteData.id}/deploys`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${NETLIFY_TOKEN}`,
-        "Content-Type": "application/zip",
-      },
-      body: zipBuffer,
-    });
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ url: `https://${siteData.name}.netlify.app` }),
-    };
-  } catch (err) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: err.message }),
-    };
-  }
+    // Feed body stream
+    const buffer = Buffer.from(event.body, "base64");
+    busboy.end(buffer);
+  });
 };
+
+// Deploy using Netlify API
+async function deployToNetlify(zipPath, siteName) {
+  const NETLIFY_TOKEN = "nfp_nkaUFvvihs48EPfZocKuCxe5CZZkT6iGe800";
+  const ZIP = fs.readFileSync(zipPath);
+
+  const response = await fetch("https://api.netlify.com/api/v1/sites", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${NETLIFY_TOKEN}`,
+      "Content-Type": "application/zip",
+      "Content-Length": ZIP.length,
+    },
+    body: ZIP
+  });
+
+  return await response.json();
+}
