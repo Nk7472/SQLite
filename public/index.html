@@ -1,31 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Web Hosting Upload</title>
-  <style>
-    body { font-family: Arial; padding: 2em; }
-    input, button { margin: 0.5em 0; }
-  </style>
+  <meta charset="UTF-8" />
+  <title>Deploy Project</title>
 </head>
 <body>
-  <h2>Upload Your Project Folder</h2>
+  <h2>Upload Folder</h2>
   <input type="file" id="folderInput" webkitdirectory directory multiple />
-  <input type="text" id="siteName" placeholder="Enter site name (optional)" />
-  <button onclick="uploadFolder()">Deploy</button>
+  <input type="text" id="siteName" placeholder="Site name (optional)" />
+  <button onclick="upload()">Upload</button>
   <pre id="result"></pre>
 
   <script>
-    async function uploadFolder() {
-      const files = document.getElementById('folderInput').files;
-      const siteName = document.getElementById('siteName').value;
-      if (!files.length) return alert("Select a folder to upload.");
+    async function upload() {
+      const files = document.getElementById("folderInput").files;
+      const siteName = document.getElementById("siteName").value || "";
 
       const formData = new FormData();
-      formData.append("siteName", siteName || "");
-
+      formData.append("siteName", siteName);
       for (const file of files) {
-        // Keep full path for file
         formData.append("folder", file, file.webkitRelativePath);
       }
 
@@ -34,8 +27,7 @@
         body: formData,
       });
 
-      const result = await res.text();
-      document.getElementById("result").textContent = result;
+      document.getElementById("result").textContent = await res.text();
     }
   </script>
 </body>
