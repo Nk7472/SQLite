@@ -1,33 +1,41 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="UTF-8" />
-  <title>Deploy Project</title>
+  <title>Web Hosting Platform</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; margin-top: 50px; }
+    input[type="file"] { margin: 20px; }
+    button { padding: 10px 20px; }
+    #output { margin-top: 20px; font-weight: bold; color: green; }
+  </style>
 </head>
 <body>
-  <h2>Upload Folder</h2>
+  <h1>Upload Project Folder</h1>
   <input type="file" id="folderInput" webkitdirectory directory multiple />
-  <input type="text" id="siteName" placeholder="Site name (optional)" />
-  <button onclick="upload()">Upload</button>
-  <pre id="result"></pre>
+  <br>
+  <button onclick="uploadFolder()">Deploy</button>
+  <div id="output"></div>
 
   <script>
-    async function upload() {
-      const files = document.getElementById("folderInput").files;
-      const siteName = document.getElementById("siteName").value || "";
+    async function uploadFolder() {
+      const input = document.getElementById("folderInput");
+      const files = input.files;
+      if (!files.length) return alert("Please select a folder");
 
       const formData = new FormData();
-      formData.append("siteName", siteName);
       for (const file of files) {
-        formData.append("folder", file, file.webkitRelativePath);
+        formData.append("files", file, file.webkitRelativePath);
       }
 
       const res = await fetch("/.netlify/functions/deployProject", {
         method: "POST",
-        body: formData,
+        body: formData
       });
 
-      document.getElementById("result").textContent = await res.text();
+      const data = await res.json();
+      document.getElementById("output").innerText =
+        data.url ? `✅ Project Live: ${data.url}` : `❌ Error: ${data.error}`;
     }
   </script>
 </body>
