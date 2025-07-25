@@ -1,0 +1,8 @@
+{
+  "name": "netlify-uploader",
+  "version": "1.0.0",
+  "dependencies": {
+    "adm-zip": "^0.5.9",
+    "node-fetch": "^2.6.7"
+  }
+}
