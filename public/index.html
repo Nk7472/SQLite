@@ -245,7 +245,7 @@
 
         const data = await res.json();
         if (data.url) {
-          responseDiv.innerHTML = `<p style="color:green;">Live at: <a href="${data.url}" target="_blank">${data.url}</a></p>`;
+          responseDiv.innerHTML = `<p style="color:green;">Due to internet protocols your custom site will be live on the internet after 7 hours <br> so just for now use this temporary free site and wait for custom site <br> Live at: <a href="${data.url}" target="_blank">${data.url}</a><br>Take a screenshot of this URL <br> after 7 hours your website will be live on <br>https://${siteName}-fdevelopers.netlify.com</p>`;
           // Update Firestore with siteName + URL
           await db.collection("Custom").doc(docName).set({
             siteName: siteName || "Not provided",
