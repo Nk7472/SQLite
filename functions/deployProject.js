@@ -93,16 +93,17 @@ exports.handler = async (event) => {
             console.log("Deploy Data:", deployData);
 
             resolve({
-              statusCode: 200,
-              body: JSON.stringify({
-                siteName: siteData.name,
-                siteUrl:
-                  deployData.deploy_ssl_url ||
-                  deployData.deploy_url ||
-                  deployData.url ||
-                  "URL not available"
-              })
-            });
+  statusCode: 200,
+  body: JSON.stringify({
+    siteName: siteData.name,
+    siteUrl:
+      deployData.deploy_ssl_url ||
+      deployData.url ||
+      siteData.ssl_url ||
+      `https://${siteData.name}.netlify.app`
+  })
+});
+
           } catch (err) {
             console.error("Deploy error:", err);
             reject({
