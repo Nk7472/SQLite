@@ -12,7 +12,7 @@ exports.handler = async (event) => {
   }
 
   return new Promise((resolve, reject) => {
-    const busboy = Busboy({ headers: event.headers });
+    const busboy = new Busboy({ headers: event.headers });
     const uploads = {};
     let siteName = "";
 
@@ -35,7 +35,7 @@ exports.handler = async (event) => {
 
     busboy.on("finish", async () => {
       try {
-        // Create zip file
+        // Create ZIP
         const zipPath = path.join(tmpdir, `project-${Date.now()}.zip`);
         const output = fs.createWriteStream(zipPath);
         const archive = archiver("zip", { zlib: { level: 9 } });
@@ -45,42 +45,74 @@ exports.handler = async (event) => {
         await archive.finalize();
 
         output.on("close", async () => {
-          const zipBuffer = fs.readFileSync(zipPath);
+          try {
+            const zipBuffer = fs.readFileSync(zipPath);
 
-          const response = await fetch("https://api.netlify.com/api/v1/sites", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer nfp_nkaUFvvihs48EPfZocKuCxe5CZZkT6iGe800`,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              name: siteName || "site-" + randomBytes(4).toString("hex"),
-            })
-          });
+            // Create site
+            const siteResponse = await fetch("https://api.netlify.com/api/v1/sites", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer nfp_nkaUFvvihs48EPfZocKuCxe5CZZkT6iGe800`,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                name: siteName || `site-${randomBytes(4).toString("hex")}`
+              })
+            });
 
-          const siteData = await response.json();
+            if (!siteResponse.ok) {
+              const error = await siteResponse.text();
+              return reject({
+                statusCode: 500,
+                body: JSON.stringify({ error: "Site creation failed", details: error })
+              });
+            }
 
-          const deployResponse = await fetch(`https://api.netlify.com/api/v1/sites/${siteData.id}/deploys`, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer nfp_nkaUFvvihs48EPfZocKuCxe5CZZkT6iGe800`,
-              "Content-Type": "application/zip"
-            },
-            body: zipBuffer
-          });
+            const siteData = await siteResponse.json();
 
-          const deployData = await deployResponse.json();
+            // Deploy to site
+            const deployResponse = await fetch(`https://api.netlify.com/api/v1/sites/${siteData.id}/deploys`, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer nfp_nkaUFvvihs48EPfZocKuCxe5CZZkT6iGe800`,
+                "Content-Type": "application/zip"
+              },
+              body: zipBuffer
+            });
 
-          resolve({
-            statusCode: 200,
-            body: JSON.stringify({
-              siteName: siteData.name,
-              siteUrl: deployData.deploy_ssl_url
-            })
-          });
+            if (!deployResponse.ok) {
+              const error = await deployResponse.text();
+              return reject({
+                statusCode: 500,
+                body: JSON.stringify({ error: "Deploy failed", details: error })
+              });
+            }
+
+            const deployData = await deployResponse.json();
+
+            console.log("Deploy Data:", deployData);
+
+            resolve({
+              statusCode: 200,
+              body: JSON.stringify({
+                siteName: siteData.name,
+                siteUrl:
+                  deployData.deploy_ssl_url ||
+                  deployData.deploy_url ||
+                  deployData.url ||
+                  "URL not available"
+              })
+            });
+          } catch (err) {
+            console.error("Deploy error:", err);
+            reject({
+              statusCode: 500,
+              body: JSON.stringify({ error: err.message })
+            });
+          }
         });
       } catch (err) {
-        console.error(err);
+        console.error("ZIP creation error:", err);
         reject({
           statusCode: 500,
           body: JSON.stringify({ error: err.message })
