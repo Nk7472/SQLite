@@ -1,8 +1,4 @@
 [build]
-  functions = "netlify/functions"
-  publish = "."  # This makes sure Netlify serves your index.html
+  publish = "public"
+  functions = "functions"
 
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
