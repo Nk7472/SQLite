@@ -3,10 +3,10 @@ const fetch = require("node-fetch");
 
 exports.handler = async (event) => {
   try {
-    const boundary = event.headers["content-type"].split("boundary=")[1];
+    const contentType = event.headers["content-type"] || event.headers["Content-Type"];
+    const boundary = contentType.split("boundary=")[1];
     const buffer = Buffer.from(event.body, "base64");
 
-    // Parse multipart form data
     const files = parseMultipart(buffer, boundary);
     const zip = new AdmZip();
     let siteName = null;
@@ -14,14 +14,13 @@ exports.handler = async (event) => {
     for (const file of files) {
       if (file.filename) {
         zip.addFile(file.filename, file.content);
-      } else if (file.name === "site_name") {
+      } else if (file.name === "siteName") {
         siteName = file.content.toString().trim().toLowerCase().replace(/\s+/g, "-");
       }
     }
 
     const zippedBuffer = zip.toBuffer();
 
-    // Check if site name is available
     let nameIsAvailable = false;
     if (siteName) {
       const check = await fetch(`https://api.netlify.com/api/v1/sites/${siteName}`, {
@@ -32,7 +31,6 @@ exports.handler = async (event) => {
       if (check.status === 404) nameIsAvailable = true;
     }
 
-    // Create site
     const createSite = await fetch("https://api.netlify.com/api/v1/sites", {
       method: "POST",
       headers: {
@@ -46,7 +44,6 @@ exports.handler = async (event) => {
 
     const site = await createSite.json();
 
-    // Deploy the zipped project
     const deploy = await fetch(`https://api.netlify.com/api/v1/sites/${site.site_id}/deploys`, {
       method: "POST",
       headers: {
@@ -78,7 +75,6 @@ exports.handler = async (event) => {
   }
 };
 
-// Minimal multipart/form-data parser
 function parseMultipart(buffer, boundary) {
   const result = [];
   const parts = buffer.toString().split(`--${boundary}`);
@@ -88,7 +84,7 @@ function parseMultipart(buffer, boundary) {
       const nameMatch = /name="([^"]+)"/.exec(part);
       const fileMatch = /filename="([^"]+)"/.exec(part);
       const contentStart = part.indexOf("\r\n\r\n") + 4;
-      const content = part.slice(contentStart, -2); // remove trailing \r\n
+      const content = part.slice(contentStart, -2);
 
       result.push({
         name: nameMatch?.[1],
