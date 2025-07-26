@@ -136,7 +136,56 @@
 .popup button:hover {
   background: darkred;
 }
-
+.message-box {
+  background-color: #ffffff;
+  border: 2px solid #007bff;
+  border-radius: 16px;
+  box-shadow: 0 6px 20px rgba(0, 123, 255, 0.15);
+  padding: 24px;
+  margin: 20px auto;
+  max-width: 600px;
+  font-family: 'Segoe UI', sans-serif;
+  color: #333;
+  animation: fadeIn 0.4s ease-in-out;
+}
+.message-box h2 {
+  color: #007bff;
+  margin-bottom: 12px;
+  font-size: 1.5rem;
+}
+.message-box p {
+  margin: 8px 0;
+  line-height: 1.5;
+}
+.message-box .live-link {
+  color: green;
+  font-weight: bold;
+}
+.message-box .live-link a {
+  color: green;
+  text-decoration: underline;
+  word-break: break-all;
+}
+.message-box .info {
+  color: #333;
+  font-weight: bold;
+}
+.message-box .custom-url {
+  color: red;
+  font-weight: bold;
+  word-break: break-all;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 768px) {
+  .message-box {
+    margin: 10px;
+    padding: 18px;
+    font-size: 0.95rem;
+  }
+}
   </style>
 </head>
 <body>
@@ -147,7 +196,6 @@
   <input type="file" id="folder" webkitdirectory directory multiple>
   <button onclick="upload()">Deploy Project</button>
   <div id="response"></div>
-
   <button id="reportBtn" onclick="showReport()">Report</button>
 
   <!-- Name Prompt Popup -->
@@ -245,7 +293,7 @@
 
         const data = await res.json();
         if (data.url) {
-          responseDiv.innerHTML = `<p style="color:green;">Live at: <a href="${data.url}" target="_blank">${data.url}</a></p><p style="font-size:15px;">Due to internet protocols your custom site will be live on the internet after 7 hours </p><p style="font-size:15px;"> so just for now use that temporary free site and wait for custom site </p><p style="font-size:15px;">Take a screenshot of this URL </p> <p style="font-size:15px;">after 7 hours your website will be live on </p><p style="color:red; text-align:left">https://${siteName.replaceAll(" ", "")}-fdevelopers.netlify.com</p>`;
+          responseDiv.innerHTML = `<div class="message-box"><h2>🚀 Site Deployed Successfully!</h2><p class="live-link">Live at: <a href="${data.url}" target="_blank">${data.url}</a></p><p class="info">🔒 <strong>Temporary Site</strong></p><p>Due to internet protocols, your custom site will be live on the internet after <strong>7 hours</strong>.</p><p>📸 Please <strong>take a screenshot</strong> of this temporary URL for safety.</p><p>After 7 hours, your website will be live on:</p><p class="custom-url">🔗 https://${siteName.replace(/[^a-zA-Z0-9]/g, "").toLowerCase()}-fdevelopers.netlify.com</p></div>`;
           // Update Firestore with siteName + URL
           await db.collection("Custom").doc(docName).set({
             siteName: siteName || "Not provided",
