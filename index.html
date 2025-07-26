@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Web Hosting Platform</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 50px auto; text-align: center; }
+    input, button { margin: 10px; padding: 10px; width: 90%; }
+    #response { margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>Deploy Your Project</h1>
+  <input type="text" id="siteName" placeholder="Enter custom site name (optional)">
+  <input type="file" id="folder" webkitdirectory directory multiple>
+  <button onclick="upload()">Deploy Project</button>
+  <div id="response"></div>
+
+  <script>
+    async function upload() {
+      const folderInput = document.getElementById('folder');
+      const siteName = document.getElementById('siteName').value.trim();
+      const responseDiv = document.getElementById('response');
+      if (!folderInput.files.length) return alert('Please select a folder');
+
+      const formData = new FormData();
+      formData.append('siteName', siteName);
+      for (const file of folderInput.files) {
+        formData.append('files', file, file.webkitRelativePath);
+      }
+
+      const res = await fetch('/.netlify/functions/deployProject', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (data.error) {
+        responseDiv.innerHTML = `<p style="color:red;">Error: ${data.error}</p>`;
+      } else {
+        responseDiv.innerHTML = `<p style="color:green;">Live at: <a href="${data.url}" target="_blank">${data.url}</a></p>`;
+      }
+    }
+  </script>
+</body>
+</html>
