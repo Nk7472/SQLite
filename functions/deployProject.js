@@ -1,55 +1,76 @@
-const AdmZip = require("adm-zip");
-const fetch = require("node-fetch");
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+const Busboy = require('busboy');
+const archiver = require('archiver');
+const axios = require('axios');
+
+const NETLIFY_AUTH_TOKEN = "nfp_nkaUFvvihs48EPfZocKuCxe5CZZkT6iGe800";
 
 exports.handler = async (event) => {
-  try {
-    const boundary = event.headers["content-type"].split("boundary=")[1];
-    const buffer = Buffer.from(event.body, "base64");
-
-    // Extract files from form-data
-    const files = parseMultipart(buffer, boundary);
-    const zip = new AdmZip();
-
-    for (const file of files) {
-      if (file.filename) {
-        zip.addFile(file.filename, file.content);
-      }
+  return new Promise((resolve, reject) => {
+    if (event.httpMethod !== 'POST') {
+      return resolve({ statusCode: 405, body: 'Method Not Allowed' });
     }
 
-    const zippedBuffer = zip.toBuffer();
+    const busboy = new Busboy({ headers: event.headers });
+    const files = {};
+    let siteName = '';
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'upload-'));
 
-    const res = await fetch("https://api.netlify.com/api/v1/sites", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer nfp_nkaUFvvihs48EPfZocKuCxe5CZZkT6iGe800`,
-        "Content-Type": "application/zip"
-      },
-      body: zippedBuffer
+    busboy.on('field', (fieldname, val) => {
+      if (fieldname === 'siteName') siteName = val;
     });
 
-    const result = await res.json();
+    busboy.on('file', (fieldname, file, filename) => {
+      const savePath = path.join(tmpDir, filename);
+      files[filename] = savePath;
+      const dir = path.dirname(savePath);
+      fs.mkdirSync(dir, { recursive: true });
+      file.pipe(fs.createWriteStream(savePath));
+    });
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ url: result.ssl_url || result.url })
-    };
-  } catch (e) {
-    return { statusCode: 500, body: JSON.stringify({ error: e.message }) };
-  }
+    busboy.on('finish', async () => {
+      const zipPath = path.join(os.tmpdir(), `${Date.now()}.zip`);
+      const output = fs.createWriteStream(zipPath);
+      const archive = archiver('zip', { zlib: { level: 9 } });
+
+      output.on('close', async () => {
+        try {
+          const siteRes = await axios.post(
+            'https://api.netlify.com/api/v1/sites',
+            siteName ? { name: siteName } : {},
+            { headers: { Authorization: `Bearer ${NETLIFY_AUTH_TOKEN}` } }
+          );
+
+          const deployRes = await axios.post(
+            `https://api.netlify.com/api/v1/sites/${siteRes.data.id}/deploys`,
+            fs.createReadStream(zipPath),
+            {
+              headers: {
+                'Content-Type': 'application/zip',
+                Authorization: `Bearer ${NETLIFY_AUTH_TOKEN}`,
+              },
+            }
+          );
+
+          resolve({
+            statusCode: 200,
+            body: JSON.stringify({ url: deployRes.data.deploy_ssl_url }),
+          });
+        } catch (err) {
+          resolve({
+            statusCode: 500,
+            body: JSON.stringify({ error: err.response?.data?.message || err.message }),
+          });
+        }
+      });
+
+      archive.directory(tmpDir, false);
+      archive.pipe(output);
+      archive.finalize();
+    });
+
+    busboy.end(Buffer.from(event.body, 'base64'));
+  });
 };
-
-// Minimal multipart parser for small uploads
-function parseMultipart(buffer, boundary) {
-  const result = [];
-  const parts = buffer.toString().split(`--${boundary}`);
-
-  for (const part of parts) {
-    if (part.includes("Content-Disposition")) {
-      const match = /name="[^"]+"; filename="([^"]+)"/.exec(part);
-      const contentStart = part.indexOf("\r\n\r\n") + 4;
-      const content = part.slice(contentStart, -2); // remove trailing \r\n
-      result.push({ filename: match?.[1], content: Buffer.from(content) });
-    }
-  }
-  return result;
-}
