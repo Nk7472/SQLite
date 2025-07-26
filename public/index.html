@@ -85,14 +85,15 @@
 
     /* Popup Styles */
     .popup-overlay, .name-popup-overlay {
-      position: fixed;
-      top: 0; left: 0;
+          position: absolute;
+      top:10 ; left: 10;
       width: 100%; height: 100%;
       background: rgba(0,0,0,0.5);
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 1000;
+      z-index: 100;
+      border:1px solid black;
     }
     .popup, .name-popup {
       background: white;
@@ -101,7 +102,25 @@
       border-radius: 10px;
       text-align: center;
     }
-    
+    .name-popup-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.name-popup {
+  background: white;
+  padding: 20px;
+  max-width: 90%;
+  border-radius: 10px;
+  text-align: center;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+}
     .popup {
   background-color: black;
   color: red;
@@ -205,9 +224,9 @@
   <!-- Name Prompt Popup -->
   <div class="name-popup-overlay" id="namePopup" style="display:none;">
     <div class="name-popup">
-      <h3>Please enter your name</h3>
-      <input type="text" id="userNameInput" placeholder="Your full name">
-      <button onclick="saveUserName()">Submit</button>
+      <h3>Create A Personal Hosting Space</h3>
+      <input type="text" id="userNameInput" placeholder="Enter Your Name">
+      <button onclick="saveUserName()">Create Space</button>
     </div>
   </div>
 
