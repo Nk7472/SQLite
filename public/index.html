@@ -186,6 +186,9 @@
     font-size: 0.95rem;
   }
 }
+.loding {
+    display:none;
+}
   </style>
 </head>
 <body>
@@ -195,6 +198,7 @@
   <input type="text" id="siteName" placeholder="Enter custom site name (optional)">
   <input type="file" id="folder" webkitdirectory directory multiple>
   <button onclick="upload()">Deploy Project</button>
+  <p class="loding">Uploading files on internet...</p>
   <div id="response"></div>
   <button id="reportBtn" onclick="showReport()">Report</button>
 
@@ -253,6 +257,8 @@
 
     // Upload logic
     async function upload() {
+      let lod = document.querySelector(".loding");
+      lod.style.display = "block";
       const folderInput = document.getElementById('folder');
       const siteName = document.getElementById('siteName').value.trim();
       const userName = localStorage.getItem("fDevDoc");
