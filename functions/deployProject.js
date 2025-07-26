@@ -1,97 +1,93 @@
-// deployProject.js
 const AdmZip = require("adm-zip");
 const fetch = require("node-fetch");
-const { Readable } = require("stream");
-const busboy = require("busboy");
-
-function generateRandomSuffix(length = 5) {
-  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-  let result = "";
-  for (let i = 0; i < length; i++) {
-    result += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return result;
-}
 
 exports.handler = async (event) => {
   try {
-    const bb = busboy({ headers: event.headers });
+    const boundary = event.headers["content-type"].split("boundary=")[1];
+    const buffer = Buffer.from(event.body, "base64");
+
+    // Extract files and fields
+    const parts = parseMultipart(buffer, boundary);
     const zip = new AdmZip();
     let siteName = "";
 
-    await new Promise((resolve, reject) => {
-      const stream = Readable.from(event.body, { encoding: "base64" });
-      stream.pipe(bb);
+    for (const part of parts) {
+      if (part.filename) {
+        zip.addFile(part.filename, part.content);
+      } else if (part.fieldname === "siteName") {
+        siteName = part.content.toString().trim().toLowerCase().replace(/\s+/g, "-");
+      }
+    }
 
-      bb.on("file", (fieldname, file, filename) => {
-        const buffer = [];
-        file.on("data", (data) => buffer.push(data));
-        file.on("end", () => {
-          zip.addFile(filename, Buffer.concat(buffer));
-        });
-      });
-
-      bb.on("field", (name, value) => {
-        if (name === "siteName") siteName = value.toLowerCase().replace(/\s+/g, "-");
-      });
-
-      bb.on("finish", resolve);
-      bb.on("error", reject);
-    });
-
-    const zipBuffer = zip.toBuffer();
+    const zippedBuffer = zip.toBuffer();
     const NETLIFY_TOKEN = "nfp_nkaUFvvihs48EPfZocKuCxe5CZZkT6iGe800";
 
-    let finalSiteName = siteName;
+    let createdSite = null;
     let attempt = 0;
-    let siteData;
+    let finalName = siteName;
 
-    while (true) {
-      const res = await fetch(`https://api.netlify.com/api/v1/sites`, {
+    while (!createdSite && attempt < 5) {
+      const response = await fetch("https://api.netlify.com/api/v1/sites", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${NETLIFY_TOKEN}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name: finalSiteName }),
+        body: JSON.stringify({ name: finalName }),
       });
 
-      siteData = await res.json();
+      const result = await response.json();
 
-      if (!siteData.message) break;
+      if (!result.error) {
+        createdSite = result;
+        break;
+      }
 
-      // If name taken, generate new variant
+      // Name taken, retry with random suffix
+      finalName = `${siteName}-${Math.random().toString(36).slice(2, 6)}`;
       attempt++;
-      finalSiteName = `${siteName}-${generateRandomSuffix(4)}`;
-      if (attempt > 5) throw new Error("Unable to generate unique site name.");
     }
 
-    const deployRes = await fetch(`https://api.netlify.com/api/v1/sites/${siteData.id}/deploys`, {
+    if (!createdSite) {
+      throw new Error("Could not create a unique site name after multiple attempts.");
+    }
+
+    await fetch(`https://api.netlify.com/api/v1/sites/${createdSite.id}/deploys`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${NETLIFY_TOKEN}`,
-        "Content-Type": "application/zip",
+        "Content-Type": "application/zip"
       },
-      body: zipBuffer,
+      body: zippedBuffer
     });
-
-    const deployData = await deployRes.json();
 
     return {
       statusCode: 200,
-      body: JSON.stringify({
-        siteName: siteData.name,
-        siteUrl:
-          deployData.deploy_ssl_url ||
-          deployData.url ||
-          siteData.ssl_url ||
-          `https://${siteData.name}.netlify.app`
-      }),
+      body: JSON.stringify({ url: createdSite.ssl_url || createdSite.url }),
     };
-  } catch (err) {
+  } catch (e) {
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: err.message }),
+      body: JSON.stringify({ error: e.message }),
     };
   }
 };
+
+// Minimal multipart parser for small uploads
+function parseMultipart(buffer, boundary) {
+  const result = [];
+  const parts = buffer.toString().split(`--${boundary}`);
+
+  for (const part of parts) {
+    if (part.includes("Content-Disposition")) {
+      const filenameMatch = /name="([^"]+)"(?:; filename="([^"]+)")?/.exec(part);
+      const fieldname = filenameMatch?.[1];
+      const filename = filenameMatch?.[2] || null;
+      const contentStart = part.indexOf("\r\n\r\n") + 4;
+      const content = part.slice(contentStart, part.length - 2); // remove trailing \r\n
+
+      result.push({ fieldname, filename, content: Buffer.from(content) });
+    }
+  }
+  return result;
+}
