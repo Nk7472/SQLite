@@ -6,88 +6,84 @@ exports.handler = async (event) => {
     const boundary = event.headers["content-type"].split("boundary=")[1];
     const buffer = Buffer.from(event.body, "base64");
 
-    // Extract files and fields
-    const parts = parseMultipart(buffer, boundary);
+    // Extract files + fields from form-data
+    const { files, fields } = parseMultipart(buffer, boundary);
     const zip = new AdmZip();
-    let siteName = "";
 
-    for (const part of parts) {
-      if (part.filename) {
-        zip.addFile(part.filename, part.content);
-      } else if (part.fieldname === "siteName") {
-        siteName = part.content.toString().trim().toLowerCase().replace(/\s+/g, "-");
+    for (const file of files) {
+      if (file.filename) {
+        zip.addFile(file.filename, file.content);
       }
     }
 
     const zippedBuffer = zip.toBuffer();
-    const NETLIFY_TOKEN = "nfp_nkaUFvvihs48EPfZocKuCxe5CZZkT6iGe800";
 
-    let createdSite = null;
-    let attempt = 0;
-    let finalName = siteName;
+    // Prepare site creation payload
+    const sitePayload = fields.site_name ? { name: fields.site_name } : {};
 
-    while (!createdSite && attempt < 5) {
-      const response = await fetch("https://api.netlify.com/api/v1/sites", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${NETLIFY_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ name: finalName }),
-      });
-
-      const result = await response.json();
-
-      if (!result.error) {
-        createdSite = result;
-        break;
-      }
-
-      // Name taken, retry with random suffix
-      finalName = `${siteName}-${Math.random().toString(36).slice(2, 6)}`;
-      attempt++;
-    }
-
-    if (!createdSite) {
-      throw new Error("Could not create a unique site name after multiple attempts.");
-    }
-
-    await fetch(`https://api.netlify.com/api/v1/sites/${createdSite.id}/deploys`, {
+    // Create new Netlify site (optionally with custom name)
+    const siteRes = await fetch("https://api.netlify.com/api/v1/sites", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${NETLIFY_TOKEN}`,
+        Authorization: `Bearer nfp_nkaUFvvihs48EPfZocKuCxe5CZZkT6iGe800`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(sitePayload)
+    });
+
+    const siteData = await siteRes.json();
+    if (!siteData.id) throw new Error("Site creation failed");
+
+    // Deploy zipped folder to the created site
+    const deployRes = await fetch(`https://api.netlify.com/api/v1/sites/${siteData.id}/deploys`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer nfp_nkaUFvvihs48EPfZocKuCxe5CZZkT6iGe800`,
         "Content-Type": "application/zip"
       },
       body: zippedBuffer
     });
 
+    const deployData = await deployRes.json();
+
     return {
       statusCode: 200,
-      body: JSON.stringify({ url: createdSite.ssl_url || createdSite.url }),
+      body: JSON.stringify({
+        url: deployData.ssl_url || deployData.url
+      })
     };
   } catch (e) {
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: e.message }),
+      body: JSON.stringify({ error: e.message })
     };
   }
 };
 
-// Minimal multipart parser for small uploads
+// Multipart parser that extracts files and fields
 function parseMultipart(buffer, boundary) {
-  const result = [];
+  const result = { files: [], fields: {} };
   const parts = buffer.toString().split(`--${boundary}`);
 
   for (const part of parts) {
     if (part.includes("Content-Disposition")) {
-      const filenameMatch = /name="([^"]+)"(?:; filename="([^"]+)")?/.exec(part);
-      const fieldname = filenameMatch?.[1];
-      const filename = filenameMatch?.[2] || null;
+      const nameMatch = /name="([^"]+)"/.exec(part);
+      const fileMatch = /filename="([^"]+)"/.exec(part);
       const contentStart = part.indexOf("\r\n\r\n") + 4;
-      const content = part.slice(contentStart, part.length - 2); // remove trailing \r\n
+      const content = part.slice(contentStart, -2); // remove trailing \r\n
 
-      result.push({ fieldname, filename, content: Buffer.from(content) });
+      if (fileMatch) {
+        // It's a file
+        result.files.push({
+          filename: fileMatch[1],
+          content: Buffer.from(content)
+        });
+      } else if (nameMatch) {
+        // It's a field
+        result.fields[nameMatch[1]] = content.trim();
+      }
     }
   }
+
   return result;
 }
