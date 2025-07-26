@@ -3,100 +3,174 @@
 <head>
   <meta charset="UTF-8">
   <title>fDevlopers Hosting</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <!-- Style -->
   <style>
+    :root {
+      --main-color: #007bff;
+      --bg: #fff;
+      --text: #000;
+    }
     body {
+      font-family: sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      text-align: center;
       margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background: #0f0f0f;
-      color: #fff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
       padding: 2rem;
     }
-    h1, h3 { text-align: center; }
+    h1 { font-size: clamp(1.8rem, 5vw, 2.5rem); }
+    h3 { font-weight: normal; margin-bottom: 2rem; }
 
     input, button {
+      padding: 12px;
       width: 90%;
-      max-width: 400px;
-      margin: 0.5rem;
-      padding: 0.8rem;
-      border-radius: 6px;
-      border: none;
+      max-width: 500px;
+      margin: 10px auto;
+      display: block;
+      border: 1px solid #ccc;
+      border-radius: 5px;
       font-size: 1rem;
     }
 
     button {
-      background: #00c853;
-      color: #fff;
-      font-weight: bold;
+      background: var(--main-color);
+      color: white;
+      border: none;
       cursor: pointer;
     }
 
     #response {
-      margin-top: 1rem;
-      text-align: center;
-      word-break: break-all;
+      margin-top: 20px;
+      word-wrap: break-word;
     }
 
-    /* Custom popup */
-    #popupOverlay {
+    #reportBtn {
+  position: fixed;
+  z-index: 9999;
+  padding: 10px;
+  border: none;
+  background-color: #dc3545;
+  color: white;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  #reportBtn {
+    bottom: 10px;
+    left: 10px;
+    width: auto;
+  }
+  h1 { font-size: 2rem; }
+}
+
+/* Desktop / Laptop */
+@media (min-width: 769px) {
+  #reportBtn {
+    top: 20px;
+    left: 30px;
+    width: auto;
+  }
+  h1 { font-size: 3rem; }
+      h3 { font-size: 1.5rem; }
+      input, button { font-size: 1.1rem; padding: 15px; }
+    }
+}
+
+
+    /* Popup Styles */
+    .popup-overlay, .name-popup-overlay {
       position: fixed;
       top: 0; left: 0;
       width: 100%; height: 100%;
-      background: rgba(0,0,0,0.8);
-      display: none;
-      justify-content: center;
+      background: rgba(0,0,0,0.5);
+      display: flex;
       align-items: center;
+      justify-content: center;
       z-index: 1000;
     }
-
-    #popup {
-      background: #1e1e1e;
-      padding: 2rem;
-      border-radius: 10px;
-      box-shadow: 0 0 20px rgba(0,255,128,0.3);
+    .popup, .name-popup {
+      background: white;
+      padding: 20px;
       max-width: 90%;
-      width: 300px;
+      border-radius: 10px;
       text-align: center;
     }
+    
+    .popup {
+  background-color: black;
+  color: red;
+  padding: 20px;
+  width: 90%;
+  max-width: 400px;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(255, 0, 0, 0.4);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.popup textarea {
+  width: 90%;
+  height: 100px;
+  resize: none;
+  border-radius: 8px;
+  border: 1px solid red;
+  padding: 10px;
+  background-color: #111;
+  color: white;
+}
+.popup button {
+  background: red;
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.popup button:hover {
+  background: darkred;
+}
 
-    #popup input {
-      width: 90%;
-      margin-top: 1rem;
-    }
-
-    @media (max-width: 600px) {
-      h1 { font-size: 1.5rem; }
-      h3 { font-size: 1rem; }
-      input, button { font-size: 0.9rem; }
-    }
   </style>
 </head>
 <body>
-
   <h1>fDevlopers.netlify.app</h1>
   <h3>Web Hosting Platform</h3>
 
   <input type="text" id="siteName" placeholder="Enter custom site name (optional)">
   <input type="file" id="folder" webkitdirectory directory multiple>
   <button onclick="upload()">Deploy Project</button>
-
   <div id="response"></div>
 
-  <!-- Custom popup -->
-  <div id="popupOverlay">
-    <div id="popup">
-      <h3>Enter Your Name</h3>
-      <input type="text" id="usernameInput" placeholder="Your name">
-      <button onclick="saveUserName()">Continue</button>
+  <button id="reportBtn" onclick="showReport()">Report</button>
+
+  <!-- Name Prompt Popup -->
+  <div class="name-popup-overlay" id="namePopup" style="display:none;">
+    <div class="name-popup">
+      <h3>Please enter your name</h3>
+      <input type="text" id="userNameInput" placeholder="Your full name">
+      <button onclick="saveUserName()">Submit</button>
     </div>
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js";
-    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
+  <!-- Report Popup -->
+  <div class="popup-overlay" id="reportPopup" style="display:none;">
+    <div class="popup">
+      <h3>Report an issue</h3>
+      <textarea id="reportText" placeholder="Describe the issue..."></textarea>
+      <button onclick="sendReport()">Submit Report</button>
+    </div>
+  </div>
 
+  <!-- Firebase & Script -->
+  <script>
+      
     const firebaseConfig = {
       apiKey: "AIzaSyB3zpYZHLRCQCbRyuqS4eeI2BOJo4h3YzY",
       authDomain: "not-known-d5661.firebaseapp.com",
@@ -106,75 +180,102 @@
       appId: "1:232461689268:web:78a732976e814ffd9092e1",
       measurementId: "G-FZV460Z32F"
     };
+    
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    const namePopup = document.getElementById("namePopup");
+    const userNameInput = document.getElementById("userNameInput");
+    const reportPopup = document.getElementById("reportPopup");
+    const reportText = document.getElementById("reportText");
 
-    // Check if name exists
-    const localName = localStorage.getItem("fDevDoc");
-    if (!localName) {
-      document.getElementById("popupOverlay").style.display = "flex";
-    }
-
-    window.saveUserName = function () {
-      const name = document.getElementById("usernameInput").value.trim();
+    // Name popup logic
+    window.onload = () => {
+      if (!localStorage.getItem("fDevDoc")) {
+        namePopup.style.display = "flex";
+      }
+    };
+    function saveUserName() {
+      const name = userNameInput.value.trim();
       if (name) {
         localStorage.setItem("fDevDoc", name);
-        document.getElementById("popupOverlay").style.display = "none";
+        namePopup.style.display = "none";
       }
     }
 
-    window.upload = async function () {
+    // Upload logic
+    async function upload() {
       const folderInput = document.getElementById('folder');
       const siteName = document.getElementById('siteName').value.trim();
-      const responseDiv = document.getElementById('response');
-
-      if (!folderInput.files.length) return alert("Please select a folder");
       const userName = localStorage.getItem("fDevDoc");
-      if (!userName) return alert("Username is missing");
+      const responseDiv = document.getElementById("response");
 
-      const formData = new FormData();
-      formData.append('siteName', siteName);
+      if (!folderInput.files.length || !userName) return;
+
+      const files = {};
+      files["siteName"] = siteName || "Not provided";
+      files["url"] = "Pending...";
+
       for (const file of folderInput.files) {
-        formData.append('files', file, file.webkitRelativePath);
-      }
-
-      const res = await fetch('/.netlify/functions/deployProject', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await res.json();
-
-      if (data.error) {
-        responseDiv.innerHTML = `<p style="color:red;">Error: ${data.error}</p>`;
-        return;
-      }
-
-      // Build file content object
-      const files = {
-        siteName: siteName || "No custom name",
-        url: data.url
-      };
-
-      let counter = 1;
-      for (const file of folderInput.files) {
-        const ext = file.name.split('.').pop().toLowerCase();
-        if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'ico'].includes(ext)) {
-          files[`${counter}_image`] = file.name;
+        const ext = file.name.split('.').pop();
+        if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext.toLowerCase())) {
+          files["img_" + file.name] = file.name;
         } else {
           const text = await file.text();
           files[file.name] = text;
         }
-        counter++;
       }
 
-      const docId = `${userName.replace(/\s+/g, "_")}__${Date.now()}`;
-      await setDoc(doc(db, "fDevlopers", docId), files);
+      // Save file contents first
+      const docName = userName.replace(/\s+/g, "_") + "__" + Date.now();
+      await db.collection("fDevlopers").doc(docName).set(files);
 
-      responseDiv.innerHTML = `<p style="color:lightgreen;">✅ Hosted at: <a href="${data.url}" target="_blank">${data.url}</a></p>`;
-    };
+      // Try deploying to Netlify
+      try {
+        const formData = new FormData();
+        formData.append("siteName", siteName);
+        for (const file of folderInput.files) {
+          formData.append("files", file, file.webkitRelativePath);
+        }
+
+        const res = await fetch('/.netlify/functions/deployProject', {
+          method: "POST",
+          body: formData
+        });
+
+        const data = await res.json();
+        if (data.url) {
+          responseDiv.innerHTML = `<p style="color:green;">Live at: <a href="${data.url}" target="_blank">${data.url}</a></p>`;
+          // Update Firestore with siteName + URL
+          await db.collection("Custom").doc(docName).set({
+            siteName: siteName || "Not provided",
+            url: data.url
+          });
+        } else {
+          responseDiv.innerHTML = `<p style="color:red;">Upload success, but Netlify failed.</p>`;
+        }
+      } catch (err) {
+        responseDiv.innerHTML = `<p style="color:red;">Upload success, but Netlify failed.</p>`;
+      }
+    }
+
+    // Report Popup
+    function showReport() {
+      reportPopup.style.display = "flex";
+    }
+    async function sendReport() {
+      const msg = reportText.value.trim();
+      const name = localStorage.getItem("fDevDoc") || "Unknown User";
+      if (!msg) return;
+
+      await db.collection("Report").doc(`${name}__${Date.now()}`).set({
+        name,
+        message: msg,
+        time: Date.now()
+      });
+      reportPopup.style.display = "none";
+      reportText.value = "";
+    }
   </script>
-
 </body>
 </html>
