@@ -2,26 +2,128 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Web Hosting Platform</title>
+  <title>fDevlopers - Web Hosting Platform</title>
   <style>
-    body { font-family: sans-serif; max-width: 600px; margin: 50px auto; text-align: center; }
-    input, button { margin: 10px; padding: 10px; width: 90%; }
-    #response { margin-top: 20px; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1f1c2c, #928dab);
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 20px;
+      padding: 40px;
+      backdrop-filter: blur(15px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+      width: 100%;
+      max-width: 500px;
+      text-align: center;
+      animation: fadeIn 1s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      background: linear-gradient(to right, #ffffff, #b8c6db);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    h3 {
+      font-weight: 400;
+      color: #ccc;
+      margin-bottom: 30px;
+    }
+
+    input[type="text"],
+    input[type="file"],
+    button {
+      width: 100%;
+      margin: 15px 0;
+      padding: 12px 18px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    input[type="text"],
+    input[type="file"] {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    input::placeholder {
+      color: #ccc;
+    }
+
+    button {
+      background: linear-gradient(to right, #00c6ff, #0072ff);
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover {
+      transform: scale(1.03);
+      box-shadow: 0 0 15px rgba(0, 114, 255, 0.4);
+    }
+
+    #response {
+      margin-top: 20px;
+      font-size: 1rem;
+    }
+
+    #response a {
+      color: #00ffea;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    #response p {
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
-  <h1>Deploy Your Project</h1>
-  <input type="text" name="site_name" id="siteName" placeholder="Enter custom site name (optional)">
-  <input type="file" id="folder" webkitdirectory directory multiple>
-  <button onclick="upload()">Deploy Project</button>
-  <div id="response"></div>
+  <div class="container">
+    <h1>fDevlopers</h1>
+    <h3>Web Hosting Platform</h3>
+    <input type="text" id="siteName" placeholder="Enter custom site name (optional)">
+    <input type="file" id="folder" webkitdirectory directory multiple>
+    <button onclick="upload()">🚀 Deploy Project</button>
+    <div id="response"></div>
+  </div>
 
   <script>
     async function upload() {
       const folderInput = document.getElementById('folder');
       const siteName = document.getElementById('siteName').value.trim();
       const responseDiv = document.getElementById('response');
-      if (!folderInput.files.length) return alert('Please select a folder');
+
+      if (!folderInput.files.length) {
+        alert('Please select a folder');
+        return;
+      }
 
       const formData = new FormData();
       formData.append('siteName', siteName);
@@ -29,16 +131,22 @@
         formData.append('files', file, file.webkitRelativePath);
       }
 
-      const res = await fetch('/.netlify/functions/deployProject', {
-        method: 'POST',
-        body: formData,
-      });
+      responseDiv.innerHTML = `<p style="color:#ccc;">Uploading your project...</p>`;
 
-      const data = await res.json();
-      if (data.error) {
-        responseDiv.innerHTML = `<p style="color:red;">Error: ${data.error}</p>`;
-      } else {
-        responseDiv.innerHTML = `<p style="color:green;">Live at: <a href="${data.url}" target="_blank">${data.url}</a></p>`;
+      try {
+        const res = await fetch('/.netlify/functions/deployProject', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data = await res.json();
+        if (data.error) {
+          responseDiv.innerHTML = `<p style="color:red;">❌ Error: ${data.error}</p>`;
+        } else {
+          responseDiv.innerHTML = `<p style="color:lightgreen;">✅ Live at: <a href="${data.url}" target="_blank">${data.url}</a></p>`;
+        }
+      } catch (err) {
+        responseDiv.innerHTML = `<p style="color:red;">⚠️ Unexpected error occurred.</p>`;
       }
     }
   </script>
