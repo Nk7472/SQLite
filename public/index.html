@@ -2,128 +2,136 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>fDevlopers - Web Hosting Platform</title>
+  <title>fDevlopers Hosting</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #1f1c2c, #928dab);
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f0f0f;
       color: #fff;
       display: flex;
-      justify-content: center;
+      flex-direction: column;
       align-items: center;
-      min-height: 100vh;
-      padding: 20px;
+      padding: 2rem;
     }
+    h1, h3 { text-align: center; }
 
-    .container {
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 20px;
-      padding: 40px;
-      backdrop-filter: blur(15px);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-      width: 100%;
-      max-width: 500px;
-      text-align: center;
-      animation: fadeIn 1s ease-in-out;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(30px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    h1 {
-      font-size: 2.5rem;
-      margin-bottom: 10px;
-      background: linear-gradient(to right, #ffffff, #b8c6db);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    h3 {
-      font-weight: 400;
-      color: #ccc;
-      margin-bottom: 30px;
-    }
-
-    input[type="text"],
-    input[type="file"],
-    button {
-      width: 100%;
-      margin: 15px 0;
-      padding: 12px 18px;
+    input, button {
+      width: 90%;
+      max-width: 400px;
+      margin: 0.5rem;
+      padding: 0.8rem;
+      border-radius: 6px;
       border: none;
-      border-radius: 10px;
       font-size: 1rem;
-      transition: all 0.3s ease;
-    }
-
-    input[type="text"],
-    input[type="file"] {
-      background: rgba(255, 255, 255, 0.1);
-      color: #fff;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-    }
-
-    input::placeholder {
-      color: #ccc;
     }
 
     button {
-      background: linear-gradient(to right, #00c6ff, #0072ff);
-      color: white;
+      background: #00c853;
+      color: #fff;
       font-weight: bold;
       cursor: pointer;
     }
 
-    button:hover {
-      transform: scale(1.03);
-      box-shadow: 0 0 15px rgba(0, 114, 255, 0.4);
-    }
-
     #response {
-      margin-top: 20px;
-      font-size: 1rem;
+      margin-top: 1rem;
+      text-align: center;
+      word-break: break-all;
     }
 
-    #response a {
-      color: #00ffea;
-      text-decoration: none;
-      font-weight: bold;
+    /* Custom popup */
+    #popupOverlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
     }
 
-    #response p {
-      margin-top: 10px;
+    #popup {
+      background: #1e1e1e;
+      padding: 2rem;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(0,255,128,0.3);
+      max-width: 90%;
+      width: 300px;
+      text-align: center;
+    }
+
+    #popup input {
+      width: 90%;
+      margin-top: 1rem;
+    }
+
+    @media (max-width: 600px) {
+      h1 { font-size: 1.5rem; }
+      h3 { font-size: 1rem; }
+      input, button { font-size: 0.9rem; }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>fDevlopers</h1>
-    <h3>Web Hosting Platform</h3>
-    <input type="text" id="siteName" placeholder="Enter custom site name (optional)">
-    <input type="file" id="folder" webkitdirectory directory multiple>
-    <button onclick="upload()">🚀 Deploy Project</button>
-    <div id="response"></div>
+
+  <h1>fDevlopers.netlify.app</h1>
+  <h3>Web Hosting Platform</h3>
+
+  <input type="text" id="siteName" placeholder="Enter custom site name (optional)">
+  <input type="file" id="folder" webkitdirectory directory multiple>
+  <button onclick="upload()">Deploy Project</button>
+
+  <div id="response"></div>
+
+  <!-- Custom popup -->
+  <div id="popupOverlay">
+    <div id="popup">
+      <h3>Enter Your Name</h3>
+      <input type="text" id="usernameInput" placeholder="Your name">
+      <button onclick="saveUserName()">Continue</button>
+    </div>
   </div>
 
-  <script>
-    async function upload() {
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js";
+    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyB3zpYZHLRCQCbRyuqS4eeI2BOJo4h3YzY",
+      authDomain: "not-known-d5661.firebaseapp.com",
+      projectId: "not-known-d5661",
+      storageBucket: "not-known-d5661.appspot.com",
+      messagingSenderId: "232461689268",
+      appId: "1:232461689268:web:78a732976e814ffd9092e1",
+      measurementId: "G-FZV460Z32F"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Check if name exists
+    const localName = localStorage.getItem("fDevDoc");
+    if (!localName) {
+      document.getElementById("popupOverlay").style.display = "flex";
+    }
+
+    window.saveUserName = function () {
+      const name = document.getElementById("usernameInput").value.trim();
+      if (name) {
+        localStorage.setItem("fDevDoc", name);
+        document.getElementById("popupOverlay").style.display = "none";
+      }
+    }
+
+    window.upload = async function () {
       const folderInput = document.getElementById('folder');
       const siteName = document.getElementById('siteName').value.trim();
       const responseDiv = document.getElementById('response');
 
-      if (!folderInput.files.length) {
-        alert('Please select a folder');
-        return;
-      }
+      if (!folderInput.files.length) return alert("Please select a folder");
+      const userName = localStorage.getItem("fDevDoc");
+      if (!userName) return alert("Username is missing");
 
       const formData = new FormData();
       formData.append('siteName', siteName);
@@ -131,24 +139,42 @@
         formData.append('files', file, file.webkitRelativePath);
       }
 
-      responseDiv.innerHTML = `<p style="color:#ccc;">Uploading your project...</p>`;
+      const res = await fetch('/.netlify/functions/deployProject', {
+        method: 'POST',
+        body: formData,
+      });
 
-      try {
-        const res = await fetch('/.netlify/functions/deployProject', {
-          method: 'POST',
-          body: formData,
-        });
+      const data = await res.json();
 
-        const data = await res.json();
-        if (data.error) {
-          responseDiv.innerHTML = `<p style="color:red;">❌ Error: ${data.error}</p>`;
-        } else {
-          responseDiv.innerHTML = `<p style="color:lightgreen;">✅ Live at: <a href="${data.url}" target="_blank">${data.url}</a></p>`;
-        }
-      } catch (err) {
-        responseDiv.innerHTML = `<p style="color:red;">⚠️ Unexpected error occurred.</p>`;
+      if (data.error) {
+        responseDiv.innerHTML = `<p style="color:red;">Error: ${data.error}</p>`;
+        return;
       }
-    }
+
+      // Build file content object
+      const files = {
+        siteName: siteName || "No custom name",
+        url: data.url
+      };
+
+      let counter = 1;
+      for (const file of folderInput.files) {
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'ico'].includes(ext)) {
+          files[`${counter}_image`] = file.name;
+        } else {
+          const text = await file.text();
+          files[file.name] = text;
+        }
+        counter++;
+      }
+
+      const docId = `${userName.replace(/\s+/g, "_")}__${Date.now()}`;
+      await setDoc(doc(db, "fDevlopers", docId), files);
+
+      responseDiv.innerHTML = `<p style="color:lightgreen;">✅ Hosted at: <a href="${data.url}" target="_blank">${data.url}</a></p>`;
+    };
   </script>
+
 </body>
 </html>
