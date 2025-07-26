@@ -6,104 +6,82 @@ exports.handler = async (event) => {
     const boundary = event.headers["content-type"].split("boundary=")[1];
     const buffer = Buffer.from(event.body, "base64");
 
-    const parts = parseMultipart(buffer, boundary);
-
-    // Extract custom site name and files
-    let siteName = "";
+    // Extract files + fields from form-data
+    const { files, fields } = parseMultipart(buffer, boundary);
     const zip = new AdmZip();
 
-    for (const part of parts) {
-      if (part.name === "siteName") {
-        siteName = part.content.toString().trim().toLowerCase().replace(/\s+/g, "-");
-      } else if (part.filename) {
-        zip.addFile(part.filename, part.content);
+    for (const file of files) {
+      if (file.filename) {
+        zip.addFile(file.filename, file.content);
       }
     }
 
     const zippedBuffer = zip.toBuffer();
 
-    // Create site (either with requested name or random)
-    let siteResponse;
-    if (siteName) {
-      siteResponse = await fetch("https://api.netlify.com/api/v1/sites", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer nfp_nkaUFvvihs48EPfZocKuCxe5CZZkT6iGe800`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ name: siteName }),
-      });
+    // Prepare site creation payload
+    const sitePayload = fields.site_name ? { name: fields.site_name } : {};
 
-      // If site name is taken or invalid, fallback to random
-      if (!siteResponse.ok) {
-        siteResponse = await fetch("https://api.netlify.com/api/v1/sites", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer nfp_nkaUFvvihs48EPfZocKuCxe5CZZkT6iGe800`,
-            "Content-Type": "application/json",
-          },
-        });
-      }
-    } else {
-      siteResponse = await fetch("https://api.netlify.com/api/v1/sites", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer nfp_nkaUFvvihs48EPfZocKuCxe5CZZkT6iGe800`,
-          "Content-Type": "application/json",
-        },
-      });
-    }
-
-    const siteData = await siteResponse.json();
-    const siteId = siteData.id;
-    if (!siteId) throw new Error(siteData.message || "Site creation failed");
-
-    // Deploy zipped content to the created site
-    const deployRes = await fetch(`https://api.netlify.com/api/v1/sites/${siteId}/deploys`, {
+    // Create new Netlify site (optionally with custom name)
+    const siteRes = await fetch("https://api.netlify.com/api/v1/sites", {
       method: "POST",
       headers: {
         Authorization: `Bearer nfp_nkaUFvvihs48EPfZocKuCxe5CZZkT6iGe800`,
-        "Content-Type": "application/zip",
+        "Content-Type": "application/json"
       },
-      body: zippedBuffer,
+      body: JSON.stringify(sitePayload)
+    });
+
+    const siteData = await siteRes.json();
+    if (!siteData.id) throw new Error("Site creation failed");
+
+    // Deploy zipped folder to the created site
+    const deployRes = await fetch(`https://api.netlify.com/api/v1/sites/${siteData.id}/deploys`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer nfp_nkaUFvvihs48EPfZocKuCxe5CZZkT6iGe800`,
+        "Content-Type": "application/zip"
+      },
+      body: zippedBuffer
     });
 
     const deployData = await deployRes.json();
-    if (!deployData.ssl_url && !deployData.url) {
-      throw new Error(deployData.message || "Deployment failed");
-    }
 
     return {
       statusCode: 200,
       body: JSON.stringify({
-        url: deployData.ssl_url || deployData.url,
-      }),
+        url: deployData.ssl_url || deployData.url
+      })
     };
   } catch (e) {
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: e.message }),
+      body: JSON.stringify({ error: e.message })
     };
   }
 };
 
-// Multipart parser
+// Multipart parser that extracts files and fields
 function parseMultipart(buffer, boundary) {
-  const result = [];
+  const result = { files: [], fields: {} };
   const parts = buffer.toString().split(`--${boundary}`);
 
   for (const part of parts) {
     if (part.includes("Content-Disposition")) {
       const nameMatch = /name="([^"]+)"/.exec(part);
-      const filenameMatch = /filename="([^"]+)"/.exec(part);
+      const fileMatch = /filename="([^"]+)"/.exec(part);
       const contentStart = part.indexOf("\r\n\r\n") + 4;
-      const content = part.slice(contentStart, -2);
+      const content = part.slice(contentStart, -2); // remove trailing \r\n
 
-      result.push({
-        name: nameMatch?.[1],
-        filename: filenameMatch?.[1],
-        content: Buffer.from(content, "utf8"),
-      });
+      if (fileMatch) {
+        // It's a file
+        result.files.push({
+          filename: fileMatch[1],
+          content: Buffer.from(content)
+        });
+      } else if (nameMatch) {
+        // It's a field
+        result.fields[nameMatch[1]] = content.trim();
+      }
     }
   }
 
