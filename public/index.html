@@ -229,7 +229,7 @@
       text-align:left;
     }
     .bold {
-        color:red;      
+        background-color:red;      
     }
   </style>
 </head>
@@ -243,7 +243,7 @@
   <button onclick="upload()">Deploy Project</button>
   <p class="loding">Uploading files on internet...</p>
   <p class="error-msg" id="nameError"></p>
-  <div id="alertBox" class="alert-box"> <b>> fDevlopers : </b>If you ever created A Temporary site : (https://effervescent-croquembouche-84ed21.netlify.app) like this, so due to internet protocols this site will be Deleted after 24 hours, So kindly <b>Re-Upload the Code </b> with a Custom site Name everytime</div>
+  <div id="alertBox" class="alert-box"><b>> fDevlopers : </b>If you ever created A Temporary site : (https://effervescent-croquembouche-84ed21.netlify.app) like this, so due to internet protocols this site will be Deleted after 24 hours, if you created an Temporary site, kindly <b>Re-Upload the Code </b> with a Custom site Name everytime</div></div>
   <div id="response"></div>
   <button id="reportBtn" onclick="showReport()">Report</button>
 
@@ -301,16 +301,24 @@
     }
 
     async function renameSiteOnNetlify(originalUrl, newName) {
-      const token = "YOUR_NETLIFY_PERSONAL_ACCESS_TOKEN"; // replace with your actual token
+      const token = "nfp_nkaUFvvihs48EPfZocKuCxe5CZZkT6iGe800"; // Replace with your real token
       const cleanInputUrl = originalUrl.replace(/^https?:\/\//, '').toLowerCase();
 
       const siteList = await fetch('https://api.netlify.com/api/v1/sites', {
         headers: { Authorization: `Bearer ${token}` }
       });
+
+      if (!siteList.ok) {
+        const errorRes = await siteList.json();
+        throw new Error(errorRes.message || "Failed to fetch site list");
+      }
+
       const allSites = await siteList.json();
-      const foundSite = allSites.find(site => {
-        return site.ssl_url?.replace(/^https?:\/\//, '').toLowerCase() === cleanInputUrl;
-      });
+      if (!Array.isArray(allSites)) {
+        throw new Error("Invalid response from Netlify. Please check your token.");
+      }
+
+      const foundSite = allSites.find(site => site.ssl_url?.replace(/^https?:\/\//, '').toLowerCase() === cleanInputUrl);
 
       if (!foundSite) throw new Error("Site not found");
 
@@ -324,8 +332,8 @@
       });
 
       if (!renameReq.ok) {
-        const errorRes = await renameReq.json();
-        throw new Error(errorRes.message || "Custom site name error");
+        const error = await renameReq.json();
+        throw new Error(error.message || "Rename failed");
       }
 
       const renamed = await renameReq.json();
@@ -393,7 +401,7 @@
             });
           } catch (renameError) {
             nameError.textContent = renameError.message.includes("taken") ? "This site name is already taken. Please choose another." : renameError.message;
-            return; // exit upload
+            return;
           }
         } else {
           responseDiv.innerHTML = `<p style="color:red;">Upload success, but Netlify failed.</p>`;
