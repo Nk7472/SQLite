@@ -7,7 +7,6 @@
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-  <!-- Style -->
   <style>
     :root {
       --main-color: #007bff;
@@ -212,6 +211,26 @@
 .loding {
     display:none;
 }
+    /* [Same CSS as before — unchanged for brevity] */
+    .error-msg {
+      color: red;
+      font-weight: bold;
+      margin-top: 5px;
+    }
+    .alert-box {
+      background-color: #ffebcc;
+      border: 1px solid #ffa500;
+      padding: 15px;
+      margin-top: 15px;
+      font-size: 0.95rem;
+      border-radius: 10px;
+      color: #333;
+      display: ;
+      text-align:left;
+    }
+    .bold {
+        color:red;      
+    }
   </style>
 </head>
 <body>
@@ -223,6 +242,8 @@
   <input type="file" id="folder" webkitdirectory directory multiple>
   <button onclick="upload()">Deploy Project</button>
   <p class="loding">Uploading files on internet...</p>
+  <p class="error-msg" id="nameError"></p>
+  <div id="alertBox" class="alert-box"> <b>> fDevlopers : </b>If you ever created A Temporary site : (https://effervescent-croquembouche-84ed21.netlify.app) like this, so due to internet protocols this site will be Deleted after 24 hours, So kindly <b>Re-Upload the Code </b> with a Custom site Name everytime</div>
   <div id="response"></div>
   <button id="reportBtn" onclick="showReport()">Report</button>
 
@@ -262,13 +283,15 @@
     const userNameInput = document.getElementById("userNameInput");
     const reportPopup = document.getElementById("reportPopup");
     const reportText = document.getElementById("reportText");
+    const nameError = document.getElementById("nameError");
+    const alertBox = document.getElementById("alertBox");
 
-    // Name popup logic
     window.onload = () => {
       if (!localStorage.getItem("fDevDoc")) {
         namePopup.style.display = "flex";
       }
     };
+
     function saveUserName() {
       const name = userNameInput.value.trim();
       if (name) {
@@ -278,25 +301,13 @@
     }
 
     async function renameSiteOnNetlify(originalUrl, newName) {
-      const token = "nfp_nkaUFvvihs48EPfZocKuCxe5CZZkT6iGe800"; // replace securely
+      const token = "YOUR_NETLIFY_PERSONAL_ACCESS_TOKEN"; // replace with your actual token
       const cleanInputUrl = originalUrl.replace(/^https?:\/\//, '').toLowerCase();
 
       const siteList = await fetch('https://api.netlify.com/api/v1/sites', {
-  headers: { Authorization: `Bearer ${token}` }
-});
-
-if (!siteList.ok) {
-  const errorText = await siteList.text();
-  throw new Error(`Failed to fetch sites: ${siteList.status} - ${errorText}`);
-}
-
-let sitesJson = await siteList.json();
-
-if (!Array.isArray(sitesJson)) {
-  throw new Error('Netlify API did not return a site list');
-}
-
-const allSites = sitesJson;
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const allSites = await siteList.json();
       const foundSite = allSites.find(site => {
         return site.ssl_url?.replace(/^https?:\/\//, '').toLowerCase() === cleanInputUrl;
       });
@@ -312,11 +323,19 @@ const allSites = sitesJson;
         body: JSON.stringify({ name: newName })
       });
 
+      if (!renameReq.ok) {
+        const errorRes = await renameReq.json();
+        throw new Error(errorRes.message || "Custom site name error");
+      }
+
       const renamed = await renameReq.json();
       return renamed.name;
     }
 
     async function upload() {
+      nameError.textContent = "";
+      alertBox.style.display = "none";
+
       let lod = document.querySelector(".loding");
       lod.style.display = "block";
       const folderInput = document.getElementById('folder');
@@ -326,13 +345,30 @@ const allSites = sitesJson;
 
       if (!folderInput.files.length || !userName) return;
 
-      const formData = new FormData();
-      formData.append("siteName", siteName);
+      const files = {};
+      files["siteName"] = siteName || "Not provided";
+      files["url"] = "Pending...";
+
       for (const file of folderInput.files) {
-        formData.append("files", file, file.webkitRelativePath);
+        const ext = file.name.split('.').pop();
+        if (["png","jpg","jpeg","gif","webp","svg"].includes(ext.toLowerCase())) {
+          files["img_" + file.name] = file.name;
+        } else {
+          const text = await file.text();
+          files[file.name] = text;
+        }
       }
 
+      const docName = userName.replace(/\s+/g, "_") + "__" + Date.now();
+      await db.collection("fDevlopers").doc(docName).set(files);
+
       try {
+        const formData = new FormData();
+        formData.append("siteName", siteName);
+        for (const file of folderInput.files) {
+          formData.append("files", file, file.webkitRelativePath);
+        }
+
         const res = await fetch('/.netlify/functions/deployProject', {
           method: "POST",
           body: formData
@@ -340,16 +376,30 @@ const allSites = sitesJson;
 
         const data = await res.json();
         if (data.url) {
-          const renamedName = await renameSiteOnNetlify(data.url, siteName.replace(/[^a-zA-Z0-9]/g, "").toLowerCase() + "-fdevelopers");
+          const newCustomName = siteName.replace(/[^a-zA-Z0-9]/g, "").toLowerCase() + "-fdevelopers";
 
-          const finalUrl = `https://${renamedName}.netlify.app`;
+          try {
+            const renamed = await renameSiteOnNetlify(data.url, newCustomName);
+            const finalUrl = `https://${renamed}.netlify.app`;
 
-          responseDiv.innerHTML = `<div class="message-box"><h2>🚀 Site Deployed Successfully!</h2><p class="live-link">Live at: <a href="${finalUrl}" target="_blank">${finalUrl}</a></p><p class="info">🔒 Custom site is now live instantly.</p></div>`;
+            responseDiv.innerHTML = `<div class="message-box"><h2>🚀 Site Deployed Successfully!</h2><p class="live-link">Live at: <a href="${finalUrl}" target="_blank">${finalUrl}</a></p><p class="info">🔒 Custom site is now live instantly.</p></div>`;
+
+            alertBox.style.display = "block";
+            alertBox.innerHTML = `⚠️ If you have created temporary site: <strong>${data.url}</strong>, then after 24 hours due to internet protocols, this site will be deleted from the internet. So kindly re-upload the site with a custom site name.`;
+
+            await db.collection("Custom").doc(docName).set({
+              siteName: siteName || "Not provided",
+              url: finalUrl
+            });
+          } catch (renameError) {
+            nameError.textContent = renameError.message.includes("taken") ? "This site name is already taken. Please choose another." : renameError.message;
+            return; // exit upload
+          }
         } else {
           responseDiv.innerHTML = `<p style="color:red;">Upload success, but Netlify failed.</p>`;
         }
       } catch (err) {
-        responseDiv.innerHTML = `<p style="color:red;">Something went wrong: ${err.message}</p>`;
+        responseDiv.innerHTML = `<p style="color:red;">Upload success, but Netlify rename failed: ${err.message}</p>`;
       } finally {
         lod.style.display = "none";
       }
