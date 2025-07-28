@@ -72,8 +72,8 @@
 /* Desktop / Laptop */
 @media (min-width: 769px) {
   #reportBtn {
-    top: 20px;
-    left: 30px;
+    top: 135px;
+    left:290px;
     width: auto;
   }
   h1 { font-size: 3rem; }
@@ -122,6 +122,10 @@
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
 }
     .popup {
+  position: absolute; 
+  top: 10;
+  left:10000;
+  z-index: 1000;
   background-color: black;
   color: red;
   padding: 20px;
@@ -240,9 +244,7 @@
     </div>
   </div>
 
-  <!-- Firebase & Script -->
   <script>
-      
     const firebaseConfig = {
       apiKey: "AIzaSyB3zpYZHLRCQCbRyuqS4eeI2BOJo4h3YzY",
       authDomain: "not-known-d5661.firebaseapp.com",
@@ -252,7 +254,7 @@
       appId: "1:232461689268:web:78a732976e814ffd9092e1",
       measurementId: "G-FZV460Z32F"
     };
-    
+
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
@@ -275,7 +277,33 @@
       }
     }
 
-    // Upload logic
+    async function renameSiteOnNetlify(originalUrl, newName) {
+      const token = "YOUR_NETLIFY_PERSONAL_ACCESS_TOKEN"; // replace securely
+      const cleanInputUrl = originalUrl.replace(/^https?:\/\//, '').toLowerCase();
+
+      const siteList = await fetch('https://api.netlify.com/api/v1/sites', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const allSites = await siteList.json();
+      const foundSite = allSites.find(site => {
+        return site.ssl_url?.replace(/^https?:\/\//, '').toLowerCase() === cleanInputUrl;
+      });
+
+      if (!foundSite) throw new Error("Site not found");
+
+      const renameReq = await fetch(`https://api.netlify.com/api/v1/sites/${foundSite.id}`, {
+        method: "PATCH",
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ name: newName })
+      });
+
+      const renamed = await renameReq.json();
+      return renamed.name;
+    }
+
     async function upload() {
       let lod = document.querySelector(".loding");
       lod.style.display = "block";
@@ -286,32 +314,13 @@
 
       if (!folderInput.files.length || !userName) return;
 
-      const files = {};
-      files["siteName"] = siteName || "Not provided";
-      files["url"] = "Pending...";
-
+      const formData = new FormData();
+      formData.append("siteName", siteName);
       for (const file of folderInput.files) {
-        const ext = file.name.split('.').pop();
-        if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext.toLowerCase())) {
-          files["img_" + file.name] = file.name;
-        } else {
-          const text = await file.text();
-          files[file.name] = text;
-        }
+        formData.append("files", file, file.webkitRelativePath);
       }
 
-      // Save file contents first
-      const docName = userName.replace(/\s+/g, "_") + "__" + Date.now();
-      await db.collection("fDevlopers").doc(docName).set(files);
-
-      // Try deploying to Netlify
       try {
-        const formData = new FormData();
-        formData.append("siteName", siteName);
-        for (const file of folderInput.files) {
-          formData.append("files", file, file.webkitRelativePath);
-        }
-
         const res = await fetch('/.netlify/functions/deployProject', {
           method: "POST",
           body: formData
@@ -319,21 +328,21 @@
 
         const data = await res.json();
         if (data.url) {
-          responseDiv.innerHTML = `<div class="message-box"><h2>🚀 Site Deployed Successfully!</h2><p class="live-link">Live at: <a href="${data.url}" target="_blank">${data.url}</a></p><p class="info">🔒 <strong>Temporary Site</strong></p><p>Due to internet protocols, your custom site will be live on the internet after <strong>7 hours</strong>.</p><p>📸 Please <strong>take a screenshot</strong> of this temporary URL for safety.</p><p>After 7 hours, your website will be live on:</p><p class="custom-url">🔗 https://${siteName.replace(/[^a-zA-Z0-9]/g, "").toLowerCase()}-fdevelopers.netlify.com</p></div>`;
-          // Update Firestore with siteName + URL
-          await db.collection("Custom").doc(docName).set({
-            siteName: siteName || "Not provided",
-            url: data.url
-          });
+          const renamedName = await renameSiteOnNetlify(data.url, siteName.replace(/[^a-zA-Z0-9]/g, "").toLowerCase() + "-fdevelopers");
+
+          const finalUrl = `https://${renamedName}.netlify.app`;
+
+          responseDiv.innerHTML = `<div class="message-box"><h2>🚀 Site Deployed Successfully!</h2><p class="live-link">Live at: <a href="${finalUrl}" target="_blank">${finalUrl}</a></p><p class="info">🔒 Custom site is now live instantly.</p></div>`;
         } else {
           responseDiv.innerHTML = `<p style="color:red;">Upload success, but Netlify failed.</p>`;
         }
       } catch (err) {
-        responseDiv.innerHTML = `<p style="color:red;">Upload success, but Netlify failed.</p>`;
+        responseDiv.innerHTML = `<p style="color:red;">Something went wrong: ${err.message}</p>`;
+      } finally {
+        lod.style.display = "none";
       }
     }
 
-    // Report Popup
     function showReport() {
       reportPopup.style.display = "flex";
     }
