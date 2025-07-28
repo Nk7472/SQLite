@@ -290,13 +290,13 @@ if (!siteList.ok) {
   throw new Error(`Failed to fetch sites: ${siteList.status} - ${errorText}`);
 }
 
-const allSites = await siteList.json();
+let sitesJson = await siteList.json();
 
-if (!Array.isArray(allSites)) {
+if (!Array.isArray(sitesJson)) {
   throw new Error('Netlify API did not return a site list');
 }
 
-      const allSites = await siteList.json();
+const allSites = sitesJson;
       const foundSite = allSites.find(site => {
         return site.ssl_url?.replace(/^https?:\/\//, '').toLowerCase() === cleanInputUrl;
       });
