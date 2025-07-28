@@ -278,12 +278,24 @@
     }
 
     async function renameSiteOnNetlify(originalUrl, newName) {
-      const token = "YOUR_NETLIFY_PERSONAL_ACCESS_TOKEN"; // replace securely
+      const token = "nfp_nkaUFvvihs48EPfZocKuCxe5CZZkT6iGe800"; // replace securely
       const cleanInputUrl = originalUrl.replace(/^https?:\/\//, '').toLowerCase();
 
       const siteList = await fetch('https://api.netlify.com/api/v1/sites', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+  headers: { Authorization: `Bearer ${token}` }
+});
+
+if (!siteList.ok) {
+  const errorText = await siteList.text();
+  throw new Error(`Failed to fetch sites: ${siteList.status} - ${errorText}`);
+}
+
+const allSites = await siteList.json();
+
+if (!Array.isArray(allSites)) {
+  throw new Error('Netlify API did not return a site list');
+}
+
       const allSites = await siteList.json();
       const foundSite = allSites.find(site => {
         return site.ssl_url?.replace(/^https?:\/\//, '').toLowerCase() === cleanInputUrl;
