@@ -25,7 +25,7 @@ exports.handler = async (event) => {
     const siteRes = await fetch("https://api.netlify.com/api/v1/sites", {
       method: "POST",
       headers: {
-        Authorization: `Bearer nfp_nkaUFvvihs48EPfZocKuCxe5CZZkT6iGe800`,
+        Authorization: `Bearer nfp_MMXJcHZwLQ5k99KAURBe1nCbZzrvg1qb3207`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify(sitePayload)
@@ -38,7 +38,7 @@ exports.handler = async (event) => {
     const deployRes = await fetch(`https://api.netlify.com/api/v1/sites/${siteData.id}/deploys`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer nfp_nkaUFvvihs48EPfZocKuCxe5CZZkT6iGe800`,
+        Authorization: `Bearer nfp_MMXJcHZwLQ5k99KAURBe1nCbZzrvg1qb3207`,
         "Content-Type": "application/zip"
       },
       body: zippedBuffer
