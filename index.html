@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>fDevlopers Hosting</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <style>
+    :root {
+      --main-color: #007bff;
+      --bg: #fff;
+      --text: #000;
+    }
+    body {
+      font-family: sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      text-align: center;
+      margin: 0;
+      padding: 2rem;
+    }
+    h1 { font-size: clamp(1.8rem, 5vw, 2.5rem); }
+    h3 { font-weight: normal; margin-bottom: 2rem; }
+
+    input, button {
+      padding: 12px;
+      width: 90%;
+      max-width: 500px;
+      margin: 10px auto;
+      display: block;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 1rem;
+    }
+
+    button {
+      background: var(--main-color);
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    #response {
+      margin-top: 20px;
+      word-wrap: break-word;
+    }
+
+    #reportBtn {
+  position: fixed;
+  z-index: 9999;
+  padding: 10px;
+  border: none;
+  background-color: #dc3545;
+  color: white;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  #reportBtn {
+    bottom: 10px;
+    left: 10px;
+    width: auto;
+  }
+  h1 { font-size: 2rem; }
+}
+
+/* Desktop / Laptop */
+@media (min-width: 769px) {
+  #reportBtn {
+    top: 135px;
+    left:290px;
+    width: auto;
+  }
+  h1 { font-size: 3rem; }
+      h3 { font-size: 1.5rem; }
+      input, button { font-size: 1.1rem; padding: 15px; }
+    }
+}
+
+
+    /* Popup Styles */
+    .popup-overlay, .name-popup-overlay {
+          position: absolute;
+      top:10 ; left: 10;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      border:1px solid black;
+    }
+    .popup, .name-popup {
+      background: white;
+      padding: 20px;
+      max-width: 90%;
+      border-radius: 10px;
+      text-align: center;
+    }
+    .name-popup-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.name-popup {
+  background: white;
+  padding: 20px;
+  max-width: 90%;
+  border-radius: 10px;
+  text-align: center;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+}
+    .popup {
+  position: absolute; 
+  top: 10;
+  left:10000;
+  z-index: 1000;
+  background-color: black;
+  color: red;
+  padding: 20px;
+  width: 90%;
+  max-width: 400px;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(255, 0, 0, 0.4);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.popup textarea {
+  width: 90%;
+  height: 100px;
+  resize: none;
+  border-radius: 8px;
+  border: 1px solid red;
+  padding: 10px;
+  background-color: #111;
+  color: white;
+}
+.popup button {
+  background: red;
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.popup button:hover {
+  background: darkred;
+}
+.message-box {
+  background-color: #ffffff;
+  border: 2px solid #007bff;
+  border-radius: 16px;
+  box-shadow: 0 6px 20px rgba(0, 123, 255, 0.15);
+  padding: 24px;
+  margin: 20px auto;
+  max-width: 600px;
+  font-family: 'Segoe UI', sans-serif;
+  color: #333;
+  animation: fadeIn 0.4s ease-in-out;
+}
+.message-box h2 {
+  color: #007bff;
+  margin-bottom: 12px;
+  font-size: 1.5rem;
+}
+.message-box p {
+  margin: 8px 0;
+  line-height: 1.5;
+}
+.message-box .live-link {
+  color: green;
+  font-weight: bold;
+}
+.message-box .live-link a {
+  color: green;
+  text-decoration: underline;
+  word-break: break-all;
+}
+.message-box .info {
+  color: #333;
+  font-weight: bold;
+}
+.message-box .custom-url {
+  color: red;
+  font-weight: bold;
+  word-break: break-all;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 768px) {
+  .message-box {
+    margin: 10px;
+    padding: 18px;
+    font-size: 0.95rem;
+  }
+}
+.loding {
+    display:none;
+}
+    /* [Same CSS as before — unchanged for brevity] */
+    .error-msg {
+      color: red;
+      font-weight: bold;
+      margin-top: 5px;
+    }
+    .alert-box {
+      background-color: #ffebcc;
+      border: 1px solid #ffa500;
+      padding: 15px;
+      margin-top: 15px;
+      font-size: 0.95rem;
+      border-radius: 10px;
+      color: #333;
+      display: ;
+      text-align:left;
+    }
+    .bold {
+        background-color:red;      
+    }
+  </style>
+</head>
+<body>
+  <h1>fDevlopers.netlify.app</h1>
+  <h3>Web Hosting Platform</h3>
+
+  <input type="text" id="siteName" placeholder="Enter custom site name :">
+  <p>Upload your project folder<br>(HTML, CSS, Javascript code)</p>
+  <input type="file" id="folder" webkitdirectory directory multiple>
+  <button onclick="upload()">Deploy Project</button>
+  <p class="loding">Uploading files on internet...</p>
+  <p class="error-msg" id="nameError"></p>
+  <div id="alertBox" class="alert-box"><b>> fDevlopers : </b>If you ever created A Temporary site : (https://effervescent-croquembouche-84ed21.netlify.app) like this, so due to internet protocols this site will be Deleted after 7 hours, if you created an Temporary site, kindly <b>Re-Upload the Code </b> with a Custom site Name everytime</div></div>
+  <div id="response"></div>
+  <button id="reportBtn" onclick="showReport()">Report</button>
+
+  <!-- Name Prompt Popup -->
+  <div class="name-popup-overlay" id="namePopup" style="display:none;">
+    <div class="name-popup">
+      <h3>Create A Personal Hosting Space</h3>
+      <input type="text" id="userNameInput" placeholder="Enter Your Name">
+      <button onclick="saveUserName()">Create Space</button>
+    </div>
+  </div>
+
+  <!-- Report Popup -->
+  <div class="popup-overlay" id="reportPopup" style="display:none;">
+    <div class="popup">
+      <h3>Report an issue</h3>
+      <textarea id="reportText" placeholder="Describe the issue..."></textarea>
+      <button onclick="sendReport()">Submit Report</button>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyB3zpYZHLRCQCbRyuqS4eeI2BOJo4h3YzY",
+      authDomain: "not-known-d5661.firebaseapp.com",
+      projectId: "not-known-d5661",
+      storageBucket: "not-known-d5661.appspot.com",
+      messagingSenderId: "232461689268",
+      appId: "1:232461689268:web:78a732976e814ffd9092e1",
+      measurementId: "G-FZV460Z32F"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const namePopup = document.getElementById("namePopup");
+    const userNameInput = document.getElementById("userNameInput");
+    const reportPopup = document.getElementById("reportPopup");
+    const reportText = document.getElementById("reportText");
+    const nameError = document.getElementById("nameError");
+    const alertBox = document.getElementById("alertBox");
+
+    window.onload = () => {
+      if (!localStorage.getItem("fDevDoc")) {
+        namePopup.style.display = "flex";
+      }
+    };
+
+    function saveUserName() {
+      const name = userNameInput.value.trim();
+      if (name) {
+        localStorage.setItem("fDevDoc", name);
+        namePopup.style.display = "none";
+      }
+    }
+
+    async function renameSiteOnNetlify(originalUrl, newName) {
+      const token = "nfp_MMXJcHZwLQ5k99KAURBe1nCbZzrvg1qb3207"; // Replace with your real token
+      const cleanInputUrl = originalUrl.replace(/^https?:\/\//, '').toLowerCase();
+
+      const siteList = await fetch('https://api.netlify.com/api/v1/sites', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (!siteList.ok) {
+        const errorRes = await siteList.json();
+        throw new Error(errorRes.message || "Failed to fetch site list");
+      }
+
+      const allSites = await siteList.json();
+      if (!Array.isArray(allSites)) {
+        throw new Error("Invalid response from Netlify. Please check your token.");
+      }
+
+      const foundSite = allSites.find(site => site.ssl_url?.replace(/^https?:\/\//, '').toLowerCase() === cleanInputUrl);
+
+      if (!foundSite) throw new Error("Site not found");
+
+      const renameReq = await fetch(`https://api.netlify.com/api/v1/sites/${foundSite.id}`, {
+        method: "PATCH",
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ name: newName })
+      });
+
+      if (!renameReq.ok) {
+        const error = await renameReq.json();
+        throw new Error(error.message || "Rename failed");
+      }
+
+      const renamed = await renameReq.json();
+      return renamed.name;
+    }
+
+    async function upload() {
+      nameError.textContent = "";
+      alertBox.style.display = "none";
+
+      let lod = document.querySelector(".loding");
+      lod.style.display = "block";
+      const folderInput = document.getElementById('folder');
+      const siteName = document.getElementById('siteName').value.trim();
+      const userName = localStorage.getItem("fDevDoc");
+      const responseDiv = document.getElementById("response");
+
+      if (!folderInput.files.length || !userName) return;
+
+      const files = {};
+      files["siteName"] = siteName || "Not provided";
+      files["url"] = "Pending...";
+
+      for (const file of folderInput.files) {
+        const ext = file.name.split('.').pop();
+        if (["png","jpg","jpeg","gif","webp","svg"].includes(ext.toLowerCase())) {
+          files["img_" + file.name] = file.name;
+        } else {
+          const text = await file.text();
+          files[file.name] = text;
+        }
+      }
+
+      const docName = userName.replace(/\s+/g, "_") + "__" + Date.now();
+      await db.collection("fDevlopers").doc(docName).set(files);
+
+      try {
+        const formData = new FormData();
+        formData.append("siteName", siteName);
+        for (const file of folderInput.files) {
+          formData.append("files", file, file.webkitRelativePath);
+        }
+
+        const res = await fetch('/.netlify/functions/deployProject', {
+          method: "POST",
+          body: formData
+        });
+
+        const data = await res.json();
+        if (data.url) {
+          const newCustomName = siteName.replace(/[^a-zA-Z0-9]/g, "").toLowerCase() + "-fdevelopers";
+
+          try {
+            const renamed = await renameSiteOnNetlify(data.url, newCustomName);
+            const finalUrl = `https://${renamed}.netlify.app`;
+
+            responseDiv.innerHTML = `<div class="message-box"><h2>🚀 Site Deployed Successfully!</h2><p class="live-link">Live at: <a href="${finalUrl}" target="_blank">${finalUrl}</a></p><p class="info">🔒 Custom site is now live instantly.</p></div>`;
+
+            alertBox.style.display = "block";
+            alertBox.innerHTML = `⚠️ If you have created temporary site: <strong>${data.url}</strong>, then after 24 hours due to internet protocols, this site will be deleted from the internet. So kindly re-upload the site with a custom site name.`;
+
+            await db.collection("Custom").doc(docName).set({
+              siteName: siteName || "Not provided",
+              url: finalUrl
+            });
+          } catch (renameError) {
+            nameError.textContent = renameError.message.includes("taken") ? "This site name is already taken. Please choose another." : renameError.message;
+            return;
+          }
+        } else {
+          responseDiv.innerHTML = `<p style="color:red;">Upload success, but Netlify failed.</p>`;
+        }
+      } catch (err) {
+        responseDiv.innerHTML = `<p style="color:red;">Upload success, but Netlify rename failed: ${err.message}</p>`;
+      } finally {
+        lod.style.display = "none";
+      }
+    }
+
+    function showReport() {
+      reportPopup.style.display = "flex";
+    }
+    async function sendReport() {
+      const msg = reportText.value.trim();
+      const name = localStorage.getItem("fDevDoc") || "Unknown User";
+      if (!msg) return;
+
+      await db.collection("Report").doc(`${name}__${Date.now()}`).set({
+        name,
+        message: msg,
+        time: Date.now()
+      });
+      reportPopup.style.display = "none";
+      reportText.value = "";
+    }
+  </script>
+</body>
+</html>
